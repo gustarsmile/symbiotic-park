@@ -24,6 +24,7 @@ describe('html', () => {
     expect(day).toContain('<title>互助共生園區</title>');
     expect(day).toContain('viewport-fit=cover');
     expect(day).toContain('family=Noto+Sans+TC');
+    expect(day).toContain('href="https://fonts.gstatic.com" crossorigin');
     expect(day).toContain('href="../css/park.css"');
     expect(day).toContain('<script type="module" src="../js/main.js">');
     expect(day).not.toMatch(/(href|src)="\//);

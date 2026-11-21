@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>互助共生園區</title>
+<meta name="description" content="一個自給自足、互相幫助的園區行不行得通？進來當一天園區裡的人，親自體驗看看。（規劃中的示意）">
+<meta property="og:type" content="website">
+<meta property="og:title" content="互助共生園區">
+<meta property="og:description" content="一個自給自足、互相幫助的園區行不行得通？進來當一天園區裡的人，親自體驗看看。（規劃中的示意）">
+<meta property="og:url" content="https://edu.omilkyway.org/symbiotic-park/day/">
+<meta property="og:image" content="https://edu.omilkyway.org/symbiotic-park/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="../css/park.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="map" tabindex="0"></canvas>
+
+  <div id="hud" hidden>
+    <div class="top">
+      <div class="tag" id="clock"><b id="clock-t"></b><span id="clock-s"></span></div>
+      <div class="top-r"><button class="tag" id="speed-btn" type="button" hidden></button><button class="tag" id="auto-btn" type="button" aria-pressed="false" hidden></button><button class="tag" id="menu-btn" type="button"></button></div>
+    </div>
+    <div class="dock">
+      <div class="card pop" id="who" hidden>
+        <div class="pop-head"><span id="who-face"></span><p class="card-title" id="who-name"></p><button class="pop-close" id="who-close" type="button"></button></div>
+        <p class="card-note" id="who-do"></p>
+        <p class="pop-why" id="who-why"></p>
+      </div>
+      <div class="card" id="task">
+        <p class="eyebrow" id="task-step"></p>
+        <p class="card-title" id="task-title"></p>
+        <p class="card-note" id="task-note"></p>
+        <div class="row"><button id="task-go" class="primary" type="button"></button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-card" role="dialog" aria-labelledby="sh-title">
+      <p class="eyebrow" id="sh-place"></p>
+      <h2 id="sh-title"></h2>
+      <p class="how" id="sh-how"></p>
+      <div class="stage" id="sh-stage"></div>
+      <p class="status" id="sh-status" role="status"></p>
+      <p class="why" id="sh-why" hidden></p>
+      <button id="sh-next" class="primary" type="button" hidden></button>
+    </div>
+  </div>
+
+  <div id="intro" class="overlay" hidden></div>
+
+  <div id="start" class="overlay"></div>
+
+  <div id="end" class="overlay" hidden></div>
+
+  <div id="load-error" class="overlay" hidden>
+    <div class="panel" role="alert">
+      <p class="lead">載入失敗，請檢查網路後再試一次。</p>
+      <div class="row"><button id="load-retry" class="primary" type="button">再試一次</button></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="../js/main.js"></script>
+</body>
+</html>

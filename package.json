@@ -1,0 +1,18 @@
+{
+  "name": "symbiotic-park",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "happy-dom": "^21.0.4",
+    "vitest": "^5.1.1"
+  }
+}

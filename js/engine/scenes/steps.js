@@ -7,7 +7,7 @@ export function create(spec) {
   const steps = spec.steps;
   const last = steps.length - 1;
   let idx = 0, presses = 0, waited = null, finished = steps.length === 0;
-  let show = spec.show ?? null, status = '', tokens = null, progress = null;
+  let show = spec.show ?? null, status = spec.status ?? '', tokens = null, progress = null;
   const timesOf = (st) => st.times ?? 1;
   const enter = () => {
     presses = 0;

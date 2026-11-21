@@ -30,7 +30,7 @@ const handoutCounter = { type: 'handout', layout: 'counter', people: ['a', 'b'],
 const handoutFaces = { type: 'handout', layout: 'faces', people: ['a', 'b', 'c'], says: ['s0', 's1', 's2'], count: '%n/%t' };
 const ledgerAuto = { type: 'ledger', title: 'T', rows: [{ label: 'r', value: '50', width: 50, color: 'x', note: 'n' }], split: { title: 's', chips: [{ label: 'c', note: 'n' }] }, status: 'st', wait: 1.5, source: 'src' };
 const ledgerBtn = { ...ledgerAuto, button: 'show', before: '0', statusAfter: 'after' };
-const pick = { type: 'pick', options: ['w', 'x', 'y', 'z'], need: 3, empty: 'none', chosen: 'has %s', count: '%n of %t', button: 'brew', result: 'made %s' };
+const pick = { type: 'pick', options: ['w', 'x', 'y', 'z'], need: 3, empty: 'none', sep: '、', chosen: 'has %s', count: '%n of %t', button: 'brew', result: 'made %s' };
 const jars = { type: 'jars', coins: 10, jars: [{ label: 'A', cap: 5, note: 'a' }, { label: 'B', cap: 4, note: 'b' }, { label: 'C', cap: 1, note: 'c' }], full: src('%s is full at %n'), count: '%n of %t' };
 
 const SAMPLES = [
@@ -234,6 +234,12 @@ describe('steps', () => {
     s.press('step'); expect(s.view().show).toEqual({ note: 'n' }); expect(s.done).toBe(true); expect(s.view().button).toBe(null);
     expect(createScene({ type: 'steps', steps: [{ label: 'a' }] }).view().show).toBe(null);
   });
+  it('場景層級的 status 在第一步產生自己的 status 前顯示', () => {
+    const s = createScene({ type: 'steps', status: 'carried', steps: [{ label: 'a', status: 'mine' }, { label: 'b' }] });
+    expect(s.view().status).toBe('carried');
+    s.press('step'); expect(s.view().status).toBe('mine');
+    expect(createScene({ type: 'steps', steps: [{ label: 'a' }] }).view().status).toBe('');
+  });
   it('第一步按了就換 status 與 show，換到下一步的按鈕文字', () => {
     const s = createScene(steps);
     expect(s.view().status).toBe(''); expect(s.view().tokens).toBe(null); expect(s.view().progress).toBe(null);
@@ -321,6 +327,12 @@ describe('pick', () => {
     expect(s.press('go')).toEqual({ ok: true, tip: null });
     expect(s.done).toBe(true); expect(s.view().text).toBe('made y、w、z'); expect(s.view().button).toBe(null);
   });
+  it('沒給 sep 時用 ", " 接；給了就用給的', () => {
+    const a = createScene({ ...pick, sep: undefined }); a.press('o0'); a.press('o1');
+    expect(a.view().text).toBe('has w, x');
+    const b = createScene({ ...pick, sep: ' + ' }); b.press('o0'); b.press('o1');
+    expect(b.view().text).toBe('has w + x');
+  });
   it('auto 依序選前 need 個，再按 go', () => {
     const s = createScene(pick), got = [];
     for (let i = 0; i < 6 && !s.done; i++) { const id = s.auto(); got.push(id); s.press(id); }
@@ -342,6 +354,13 @@ describe('jars', () => {
     s.press('j2');
     expect(s.done).toBe(true); expect(s.view().left).toBe(0); expect(s.view().coins).toBe(10);
     expect(s.view().jars).toEqual([{ id: 'j0', label: 'A', note: 'a', got: 5 }, { id: 'j1', label: 'B', note: 'b', got: 4 }, { id: 'j2', label: 'C', note: 'c', got: 1 }]);
+  });
+  it('count 可用 %l 顯示剩下幾枚：10、9、……', () => {
+    const s = createScene({ ...jars, count: '還有 %l 枚' });
+    expect(s.view().status).toBe('還有 10 枚');
+    s.press('j0'); expect(s.view().status).toBe('還有 9 枚');
+    s.press('j0'); expect(s.view().status).toBe('還有 8 枚');
+    s.press('j2'); expect(s.view().status).toBe('還有 7 枚');
   });
   it('status 用 count：已放數與總數', () => {
     const s = createScene(jars); s.press('j0'); s.press('j2'); expect(s.view().status).toBe('2 of 10');
@@ -378,7 +397,7 @@ describe('index', () => {
     expect(() => createScene([taps, { type: 'nope2' }])).toThrow(/nope2/);
     expect(() => createScene([])).toThrow();
   });
-  it('engine 不用 document、window、計時器與真實時間；場景檔裡不出現中文', () => {
+  it('engine 不用 document、window、計時器與真實時間；程式字串裡不出現中文與中文標點', () => {
     const base = new URL('../js/engine/', import.meta.url);
     const files = [];
     const walk = (dir) => readdirSync(dir, { withFileTypes: true }).forEach((e) => { const u = new URL(e.name + (e.isDirectory() ? '/' : ''), dir); if (e.isDirectory()) walk(u); else if (e.name.endsWith('.js')) files.push(u); });
@@ -388,7 +407,8 @@ describe('index', () => {
     files.forEach((u) => {
       const text = readFileSync(u, 'utf8');
       expect(text, u.pathname).not.toMatch(banned);
-      if (u.pathname.includes('/scenes/')) expect(text, u.pathname).not.toMatch(/[一-鿿]/);
+      const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+      expect(code, u.pathname).not.toMatch(/[　-〿一-鿿＀-￯]/);
     });
   });
 });

@@ -11,7 +11,7 @@ export function create(spec) {
     view() {
       return {
         type: 'jars',
-        status: fill(spec.count, { n: spec.coins - left, t: spec.coins }),
+        status: fill(spec.count, { n: spec.coins - left, t: spec.coins, l: left }),
         tip,
         left,
         coins: spec.coins,

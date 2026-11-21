@@ -11,7 +11,7 @@ export function create(spec) {
     if (chosen.length < need) return options.flatMap((_, k) => (chosen.includes(k) ? [] : ['o' + k]));
     return ['go'];
   };
-  const list = () => chosen.map((k) => options[k]).join('、');   // joined with the ideographic comma
+  const list = () => chosen.map((k) => options[k]).join(spec.sep ?? ', ');   // separator comes from the data
   return {
     view() {
       let text = spec.empty;

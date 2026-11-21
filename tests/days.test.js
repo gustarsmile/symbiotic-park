@@ -3,7 +3,7 @@ import { DATA_FILES, assemble } from '../js/data.js';
 import { readData } from './helpers/data.js';
 import { checkDay } from './helpers/days.js';
 import { ROLE_IDS } from '../js/engine/store.js';
-import { eachString } from './helpers/sourced.js';
+import { eachString, eachSourced } from './helpers/sourced.js';
 
 const d = readData();
 const ROLES = ['farm', 'work', 'shop', 'acct', 'learner', 'vol', 'mentor'];
@@ -80,11 +80,28 @@ describe('使用者 2026-11-21 決定的寫法（跟試作不一樣，是刻意�
     expect(d.days.farm.tasks[7].title).toBe('去看這個月的帳');
     expect(d.days.farm.tasks[7].head).toBe('今天賣的每 100 元去了哪裡');
   });
-});
-
-it('志工備菜那句「賣相不好的，煮起來一樣好吃」的來源待確認', () => {
-  expect(d.days.vol.tasks[1].why.text).toBe('共食用的是當週剩下的菜。賣相不好的，煮起來一樣好吃。');
-  expect(d.days.vol.tasks[1].why.source).toBe('運作設計 6.4；運作設計 6.2（二）；待確認');
+  it('志工備菜：賣相不好的只送加工坊，鍋裡是好看的菜', () => {
+    const job = d.days.vol.tasks[1];
+    expect(job.why.text).toBe('共食用的是當週剩下的菜。');
+    expect(job.why.source).toBe('運作設計 6.4；運作設計 6.2（二）');
+    expect(job.scene.items).toHaveLength(5);
+    expect(job.scene.items.some((it) => it.icon === 'vegBad')).toBe(false);
+    expect(job.scene.items.map((it) => it.icon)).toEqual(['veg', 'veg', 'veg', 'veg', 'veg']);
+  });
+  it('整份資料裡沒有任何來源是待確認', () => {
+    let n = 0;
+    eachSourced(d, (s, path) => { n++; expect(s.source, path).not.toContain('待確認'); });
+    expect(n).toBeGreaterThan(150); // every sourced text in the data was walked
+    // a ledger part carries its source as a plain string
+    const ledgers = [];
+    const walk = (v) => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') { if (v.type === 'ledger') ledgers.push(v); Object.values(v).forEach(walk); }
+    };
+    walk(d);
+    expect(ledgers).toHaveLength(3); // farm job 8, bookkeeper job 3, volunteer job 7
+    ledgers.forEach((l) => { expect(typeof l.source).toBe('string'); expect(l.source).not.toContain('待確認'); });
+  });
 });
 
 it('志工簽退補上了示意', () => expect(d.days.vol.tasks[6].how).toContain('4.5 小時（示意）'));

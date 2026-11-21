@@ -1,3 +1,3 @@
 import { boot } from './boot.js';
 
-boot();
+boot().catch(() => { /* the page already shows the retry panel */ });

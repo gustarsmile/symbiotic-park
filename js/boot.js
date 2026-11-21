@@ -69,18 +69,9 @@ function bindInput(canvas, park, view, hud) {
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
-// Resolves with { park, auto, data, record, view, hud, stop }. If the data cannot be loaded it shows the retry panel and rejects.
-export async function boot({ fetchFn = fetch, win = window, storage = safeStorage(win) } = {}) {
-  let data;
-  try {
-    data = await loadData(DATA_BASE, fetchFn);
-  } catch (err) {
-    $('load-error').hidden = false;
-    $('load-retry').onclick = () => { boot({ fetchFn, win, storage }).catch(() => {}); };
-    throw err;
-  }
-  $('load-error').hidden = true;
-
+// Builds everything from loaded data. Nothing is attached to the page (listeners, frame loop, visible hud) until
+// every step that can throw has run, so a failure here leaves nothing behind.
+function build(data, win, storage) {
   const record = loadRecord(storage);
   const park = createPark(data);
   const auto = createAuto(park);
@@ -89,11 +80,11 @@ export async function boot({ fetchFn = fetch, win = window, storage = safeStorag
   const reduceMotion = () => !!win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   const view = createMapView(canvas, park, painted, data.ui, { win, reduceMotion });
   const hud = createHud(park, auto, data, record, { onMenu() { /* the role list comes with the welcome */ } });
-
   park.beginWatch();
+  view.resize();
+
   for (const id of ['start', 'intro', 'end']) $(id).hidden = true;
   $('hud').hidden = false;
-  view.resize();
   win.addEventListener('resize', view.resize);
   bindInput(canvas, park, view, hud);
 
@@ -111,4 +102,24 @@ export async function boot({ fetchFn = fetch, win = window, storage = safeStorag
 
   win.__park = { park, auto, view, stop };
   return { park, auto, data, record, view, hud, stop };
+}
+
+// Resolves with { park, auto, data, record, view, hud, stop }. If anything fails before the park is running it shows
+// the retry panel and rejects. While a retry is under way the button is disabled, so a double tap starts only one boot.
+export async function boot({ fetchFn = fetch, win = window, storage = safeStorage(win) } = {}) {
+  const retry = $('load-retry');
+  try {
+    const data = await loadData(DATA_BASE, fetchFn);
+    const result = build(data, win, storage);
+    $('load-error').hidden = true; retry.disabled = false;
+    return result;
+  } catch (err) {
+    $('load-error').hidden = false; retry.disabled = false;
+    retry.onclick = () => {
+      if (retry.disabled) return;
+      retry.disabled = true;
+      boot({ fetchFn, win, storage }).catch(() => {});
+    };
+    throw err;
+  }
 }

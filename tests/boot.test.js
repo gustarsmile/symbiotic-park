@@ -78,6 +78,43 @@ describe('boot', () => {
     expect(err.hidden).toBe(false);
   });
 
+  it('再試一次連按兩下：載入中第二下不算，只啟動一次（一條動畫迴圈、一個 __park）', async () => {
+    let online = false, release, asked = 0;
+    const gate = new Promise((r) => { release = r; });
+    const fetchFn = (url) => { asked++; return online ? gate.then(() => diskFetch(url)) : Promise.reject(new Error('offline')); };
+    const win = makeWin();
+    await expect(boot({ fetchFn, win, storage: memory() })).rejects.toThrow();
+    const btn = document.getElementById('load-retry'), perTry = asked;
+    online = true;
+    btn.click(); btn.click();
+    expect(btn.disabled).toBe(true);
+    release();
+    await vi.waitFor(() => expect(document.getElementById('load-error').hidden).toBe(true));
+    expect(asked).toBe(perTry * 2);                 // one retry's worth of requests, not two
+    expect(queue).toHaveLength(1);                  // one frame loop
+    expect(btn.disabled).toBe(false);
+    stops.push(win.__park.stop);
+  });
+
+  it('資料載好之後開場失敗（例如畫不出圖）：還是看得到說明和再試一次，沒有動畫迴圈、沒有掛上監聽', async () => {
+    const proto = globalThis.HTMLCanvasElement.prototype, fake = proto.getContext;
+    proto.getContext = () => null;
+    const adds = [];
+    const win = makeWin({ addEventListener: (t) => adds.push(t) });
+    await expect(boot({ fetchFn: diskFetch, win, storage: memory() })).rejects.toThrow();
+    proto.getContext = fake;
+    expect(document.getElementById('load-error').hidden).toBe(false);
+    expect(document.getElementById('load-retry').disabled).toBe(false);
+    expect(document.getElementById('hud').hidden).toBe(true);
+    expect(queue).toHaveLength(0);
+    expect(adds).toEqual([]);
+    expect(win.__park).toBeUndefined();
+    // and a retry once drawing works again succeeds
+    document.getElementById('load-retry').click();
+    await vi.waitFor(() => expect(document.getElementById('load-error').hidden).toBe(true));
+    stops.push(win.__park.stop);
+  });
+
   it('其中一個檔回 404 也算載不到', async () => {
     const fetchFn = (url) => (String(url).endsWith('days/vol.json') ? Promise.resolve({ ok: false, status: 404, json: async () => ({}) }) : diskFetch(url));
     await expect(boot({ fetchFn, win: makeWin(), storage: memory() })).rejects.toThrow(/days\/vol\.json/);

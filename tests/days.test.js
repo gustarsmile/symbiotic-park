@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { DATA_FILES, assemble } from '../js/data.js';
 import { readData } from './helpers/data.js';
 import { checkDay } from './helpers/days.js';
+import { ROLE_IDS } from '../js/engine/store.js';
 import { eachString } from './helpers/sourced.js';
 
 const d = readData();
@@ -12,6 +13,8 @@ it('days/<角色>.json 放進 days.<角色>', () => {
   expect(assemble({ 'days/farm.json': { id: 'farm' }, 'map.json': {} }).days).toEqual({ farm: { id: 'farm' } });
   expect(Object.keys(d.days).sort()).toEqual([...ROLES].sort());
 });
+
+it('ROLE_IDS 跟 days 的鍵內容與順序一致', () => expect(ROLE_IDS).toEqual(Object.keys(d.days)));
 
 describe.each(['farm', 'work', 'shop', 'acct'])('%s 的一天', (id) => {
   const day = d.days[id];

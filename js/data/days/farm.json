@@ -1,0 +1,442 @@
+{
+  "id": "farm",
+  "who": "ahe",
+  "name": "一日農夫",
+  "desc": "農場夥伴：採收、育苗、交菜箱",
+  "hold": "basket",
+  "tasks": [
+    {
+      "at": "06:30",
+      "hold": "07:40",
+      "place": "beds",
+      "spot": [523.8, 1090.3],
+      "placeName": "葉菜畦",
+      "title": "到葉菜畦採收",
+      "note": "天剛亮，葉菜最脆。訂戶這禮拜要六把。",
+      "verb": "開始採收",
+      "head": "採收葉菜",
+      "how": "點一下菜，收進籃子。",
+      "carry": "basket",
+      "scene": {
+        "type": "taps",
+        "count": "籃子裡 %n 把，共 %t 把",
+        "gone": true,
+        "items": [
+          {
+            "icon": "veg",
+            "aria": "採收第 1 把"
+          },
+          {
+            "icon": "vegBad",
+            "aria": "採收第 2 把，被蟲咬過"
+          },
+          {
+            "icon": "veg",
+            "aria": "採收第 3 把"
+          },
+          {
+            "icon": "veg",
+            "aria": "採收第 4 把"
+          },
+          {
+            "icon": "vegBad",
+            "aria": "採收第 5 把，被蟲咬過"
+          },
+          {
+            "icon": "veg",
+            "aria": "採收第 6 把"
+          }
+        ]
+      },
+      "why": {
+        "text": "有兩把被蟲咬過，照樣收。賣相不好的也有去處，等一下你就知道。",
+        "source": "運作設計 6.2（二）"
+      }
+    },
+    {
+      "at": "08:00",
+      "hold": "08:50",
+      "place": "herb",
+      "spot": [351.5, 993.4],
+      "placeName": "香草園",
+      "title": "到香草園割香茅",
+      "note": "香草園在葉菜畦西邊，沿著環狀步道走。",
+      "verb": "開始割香茅",
+      "head": "割香茅",
+      "how": "點一下，割成一束。",
+      "carry": "basket",
+      "scene": {
+        "type": "taps",
+        "count": "割了 %n 束，共 %t 束",
+        "items": [
+          {
+            "icon": "grass",
+            "iconDone": "bundle",
+            "aria": "割第 1 叢香茅"
+          },
+          {
+            "icon": "grass",
+            "iconDone": "bundle",
+            "aria": "割第 2 叢香茅"
+          },
+          {
+            "icon": "grass",
+            "iconDone": "bundle",
+            "aria": "割第 3 叢香茅"
+          }
+        ]
+      },
+      "why": {
+        "text": "新鮮的香茅附在菜箱裡，其餘的曬乾做茶。",
+        "source": "產品線規劃 2.1；產品線規劃 一"
+      }
+    },
+    {
+      "at": "09:20",
+      "hold": "10:10",
+      "place": "shed",
+      "spot": [248, 752],
+      "placeName": "集貨棚",
+      "title": "到集貨棚分級",
+      "note": "剛收的菜要先分一分。",
+      "verb": "開始分級",
+      "head": "分級",
+      "how": "好看的進菜箱，賣相不好的送加工坊。",
+      "carry": "crate",
+      "scene": {
+        "type": "sort",
+        "count": "第 %i 把，共 %t 把",
+        "doneStatus": "菜箱 %0 把，加工坊 %1 把",
+        "counters": true,
+        "items": [
+          {
+            "icon": "veg",
+            "cat": 0
+          },
+          {
+            "icon": "vegBad",
+            "cat": 1
+          },
+          {
+            "icon": "veg",
+            "cat": 0
+          },
+          {
+            "icon": "veg",
+            "cat": 0
+          },
+          {
+            "icon": "vegBad",
+            "cat": 1
+          },
+          {
+            "icon": "veg",
+            "cat": 0
+          }
+        ],
+        "cats": [
+          {
+            "label": "進菜箱",
+            "icon": "box"
+          },
+          {
+            "label": "送加工坊",
+            "icon": "crate"
+          }
+        ],
+        "tips": [
+          {
+            "text": "這把很漂亮。新鮮的先給每週訂菜的家庭。",
+            "source": "產品線規劃 一"
+          },
+          {
+            "text": "這把被蟲咬過，訂戶打開會失望。送加工坊，做成放得久的東西。",
+            "source": "運作設計 6.2（一）"
+          }
+        ]
+      },
+      "why": {
+        "text": "同一塊地種出來的東西賣三次：新鮮的進菜箱，曬乾的做成茶，賣相不好的進工坊。",
+        "source": "產品線規劃 一"
+      }
+    },
+    {
+      "at": "10:30",
+      "hold": "11:40",
+      "place": "work",
+      "spot": [384, 444],
+      "placeName": "加工坊",
+      "title": "把香茅送去加工坊",
+      "note": "加工坊在西北邊，紅屋頂那一棟。",
+      "verb": "開始烘香茅",
+      "head": "烘乾、包茶包",
+      "how": "照順序做三個步驟。",
+      "carry": null,
+      "scene": {
+        "type": "steps",
+        "show": {
+          "icon": "tray"
+        },
+        "steps": [
+          {
+            "label": "把香茅鋪上乾燥盤",
+            "status": "鋪好了。",
+            "show": {
+              "icon": "trayFull"
+            }
+          },
+          {
+            "label": "啟動乾燥機",
+            "wait": {
+              "seconds": 2.6,
+              "status": "低溫烘乾中……"
+            },
+            "status": "烘乾了，香味還在。"
+          },
+          {
+            "label": "裝成茶包",
+            "times": 3,
+            "token": "tea",
+            "count": "茶包 %n 包，共 %t 包"
+          }
+        ]
+      },
+      "why": {
+        "text": "曬乾的東西整年都能賣，冬天和淡季也有收入。包裝上只寫風味和產地，不寫療效。",
+        "source": "產品線規劃 一"
+      }
+    },
+    {
+      "at": "13:30",
+      "hold": "14:30",
+      "place": "green",
+      "spot": [960, 993],
+      "placeName": "溫網室",
+      "title": "到溫網室育苗",
+      "note": "吃過午飯，穿過中間的公園，到東南邊的溫網室。",
+      "verb": "開始播種",
+      "head": "替下一輪育苗",
+      "how": "一格點一下，把種子播進育苗盤。",
+      "carry": "box",
+      "wait": "中午大家去吃飯，有人到公園坐著聊天。",
+      "scene": {
+        "type": "taps",
+        "count": "播了 %n 格，共 %t 格",
+        "items": [
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 1 格播種"
+          },
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 2 格播種"
+          },
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 3 格播種"
+          },
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 4 格播種"
+          },
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 5 格播種"
+          },
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 6 格播種"
+          },
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 7 格播種"
+          },
+          {
+            "icon": "cell",
+            "iconDone": "cellSown",
+            "aria": "在第 8 格播種"
+          }
+        ]
+      },
+      "why": {
+        "text": "這一盤是下一輪要種的菜。賣菜的錢，每 100 元先留 20 元（示意）買種苗和資材，圓圈才接得下去。",
+        "source": "運作設計 6.2（一）；運作設計 6.3 規則一；示意數字"
+      }
+    },
+    {
+      "at": "15:30",
+      "hold": "16:40",
+      "place": "shop",
+      "spot": [612, 300],
+      "placeName": "門市",
+      "title": "到門市交菜箱",
+      "note": "訂菜的家庭下午來取。門市在正北邊，藍屋頂。",
+      "verb": "開始交菜箱",
+      "head": "把菜箱交給訂戶",
+      "how": "點一下菜箱，交給排隊的家庭。",
+      "carry": "crate",
+      "wait": "下午，導師在共學教室給志工上課。",
+      "scene": {
+        "type": "handout",
+        "layout": "counter",
+        "people": ["fam1", "fam2", "fam3"],
+        "says": ["「謝謝！這禮拜也有香茅。」", "「孩子說上次的菜好甜。」", "「我們下一季也訂了。」"],
+        "give": "box",
+        "count": "交出 %n 箱，共 %t 箱",
+        "aria": ["交出第 1 箱菜", "交出第 2 箱菜", "交出第 3 箱菜"]
+      },
+      "why": {
+        "text": "每週一箱，一箱 500 元（示意）。訂戶先付一季的錢，園區拿來買下一季的種苗、付薪水，不必向誰借。",
+        "source": "運作設計 6.2（一）；示意數字"
+      }
+    },
+    {
+      "at": "17:30",
+      "hold": "18:20",
+      "place": "dining",
+      "spot": [1004, 786],
+      "placeName": "共食餐廳",
+      "title": "把剩下的菜送去共食",
+      "note": "今天沒賣完的菜，晚上大家一起吃。餐廳在東邊，黃屋頂。",
+      "verb": "送菜、開飯",
+      "head": "共食",
+      "how": "菜送進廚房，然後坐下來。",
+      "carry": null,
+      "wait": "孩子放學來上課，志工在備菜。",
+      "scene": {
+        "type": "steps",
+        "show": {
+          "icon": "crate"
+        },
+        "steps": [
+          {
+            "label": "把今天剩下的菜送進廚房",
+            "show": {
+              "note": "志工接過去，洗一洗就下鍋。"
+            }
+          },
+          {
+            "label": "坐下來一起吃",
+            "status": "開飯了。",
+            "show": {
+              "people": [
+                {
+                  "id": "chunzhi",
+                  "label": "志工"
+                },
+                {
+                  "id": "kid1",
+                  "label": "孩子"
+                },
+                {
+                  "id": "laolin",
+                  "label": "導師"
+                },
+                {
+                  "id": "acheng",
+                  "label": "學員"
+                },
+                {
+                  "id": "agong",
+                  "label": "鄰居"
+                },
+                {
+                  "id": "ahe",
+                  "label": "你"
+                }
+              ],
+              "mood": "happy",
+              "carry": "bowl",
+              "sit": true
+            }
+          }
+        ]
+      },
+      "why": {
+        "text": "每週一次，對所有人開放，不必報名。飯是志工煮的，菜是當週剩下的。",
+        "source": "運作設計 6.4；運作設計 6.2（三）"
+      }
+    },
+    {
+      "at": "18:40",
+      "hold": "19:10",
+      "place": "board",
+      "spot": [885, 452],
+      "placeName": "帳本公開牆",
+      "title": "去看今天的帳",
+      "note": "帳務夥伴把帳貼在辦公室門口的公開牆上，就在餐廳北邊。",
+      "verb": "看帳本",
+      "head": "今天賣的每 100 元去了哪裡",
+      "carry": null,
+      "scene": {
+        "type": "ledger",
+        "rows": [
+          {
+            "label": "夥伴的薪水",
+            "value": "50 元",
+            "width": 100,
+            "color": "leaf",
+            "note": "你今天的薪水也在這裡"
+          },
+          {
+            "label": "下一輪的種苗與資材",
+            "value": "20 元",
+            "width": 40,
+            "color": "soil",
+            "note": "下午播的種子，錢從這裡來"
+          },
+          {
+            "label": "營運、地租與設備更新",
+            "value": "22 元",
+            "width": 44,
+            "color": "sky",
+            "note": "機器會壞，每年先存"
+          },
+          {
+            "label": "盈餘",
+            "value": "8 元",
+            "width": 16,
+            "color": "sun",
+            "note": "剩下的才是盈餘"
+          }
+        ],
+        "split": {
+          "title": "盈餘再照公開的比例分",
+          "chips": [
+            {
+              "label": "公積金 5 成",
+              "note": "歉收準備、添設備"
+            },
+            {
+              "label": "公益金 4 成",
+              "note": "課輔、共食、急難"
+            },
+            {
+              "label": "傳承金 1 成",
+              "note": "育成下一個點"
+            }
+          ]
+        },
+        "status": "數字是示意，實際要用當地的成本重算。",
+        "wait": 1.5,
+        "source": "運作設計 6.3 規則一；運作設計 6.3 規則二；示意數字"
+      },
+      "why": {
+        "text": "一半在路上就成了薪水。廚餘做成堆肥回到田裡，賺的錢先顧下一輪。園區就這樣一圈一圈自己轉。",
+        "source": "運作設計 6.3 規則一；運作設計 6.2（二）；運作設計 一"
+      }
+    }
+  ],
+  "did": ["採了 6 把葉菜，割了 3 束香茅", "4 把進菜箱，2 把送加工坊", "烘了 3 包香茅茶", "替下一輪播了 8 格種子", "把 3 箱菜交到訂戶手上", "和大家吃了一頓飯"],
+  "line": {
+    "text": "明天換別人當農夫，園區照樣會轉。",
+    "source": "運作設計 一"
+  }
+}

@@ -149,6 +149,7 @@
         },
         {
           "type": "ledger",
+          "hideHow": true,
           "title": "「每 100 元去了哪裡」這一張",
           "rows": [
             {

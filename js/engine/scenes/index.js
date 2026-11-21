@@ -21,15 +21,18 @@ function createPart(spec) {
 // createScene(part | part[]) -> Scene. An array is a multi-part scene: only the
 // current part is shown; when it is done the next one takes over, and the scene
 // is done when the last part is.
+// Any part may carry `hideHow: true`: while it is the current part, view().hideHow
+// is true and the job's how-line is hidden. Every view() carries the boolean.
 export function createScene(spec) {
-  const parts = (Array.isArray(spec) ? spec : [spec]).map(createPart);
+  const specs = Array.isArray(spec) ? spec : [spec];
+  const parts = specs.map(createPart);
   if (parts.length === 0) throw new Error('a scene needs at least one part');
   let cur = 0;
   const settle = () => { while (parts[cur].done && cur < parts.length - 1) cur++; };
   settle();
   const finished = () => cur === parts.length - 1 && parts[cur].done;
   return {
-    view() { return { ...parts[cur].view(), part: cur }; },
+    view() { return { ...parts[cur].view(), part: cur, hideHow: specs[cur].hideHow === true }; },
     controls() { return finished() ? [] : parts[cur].controls(); },
     press(id) {
       if (finished()) return { ok: false, tip: null };

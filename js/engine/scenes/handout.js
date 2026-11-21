@@ -17,7 +17,7 @@ export function create(spec) {
         tip: null,
         layout: spec.layout,
         people: people.map((id, k) => ({ id, served: served[k] })),
-        items: pressed.map((p, i) => ({ id: 'i' + i, pressed: p })),
+        items: pressed.map((p, i) => ({ id: 'i' + i, pressed: p, aria: spec.aria?.[i] ?? null })),
         give: spec.give ?? null,
         back: spec.back ?? null,
         returned: spec.back !== undefined ? n : 0,

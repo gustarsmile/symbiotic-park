@@ -54,7 +54,7 @@ describe.each(SAMPLES)('%s', (type, spec) => {
     for (let i = 0; i < 200 && !s.done; i++) {
       const v = s.view();
       expect(typeof v.type).toBe('string'); expect(typeof v.status).toBe('string'); expect(v.tip === null || typeof v.tip === 'string').toBe(true);
-      expect(typeof v.part).toBe('number');
+      expect(typeof v.part).toBe('number'); expect(typeof v.hideHow).toBe('boolean');
       const id = s.auto();
       if (id === null) s.advance(0.1); else { expect(s.controls()).toContain(id); s.press(id); }
     }
@@ -126,6 +126,13 @@ describe('sort', () => {
     expect(s.auto()).toBe('c1'); s.press('c1'); expect(s.auto()).toBe('c0');
     s.press('c0'); s.press('c1');
     expect(s.view().status).toBe(''); expect(s.view().who).toBe(null);
+  });
+  it('沒給 done 時，doneText 是 null（不是 undefined），JSON 裡也看得到', () => {
+    const s = createScene({ ...sort, done: undefined });
+    expect(s.view().doneText).toBe(null);
+    s.press('c1'); s.press('c0'); s.press('c1');
+    expect(s.done).toBe(true); expect(s.view().doneText).toBe(null);
+    expect(JSON.parse(json(s))).toHaveProperty('doneText', null);
   });
 });
 
@@ -271,7 +278,7 @@ describe('handout', () => {
     expect(s.auto()).toBe('i0');
     s.press('i1');
     expect(s.view().bubble).toBe('s0'); expect(s.view().people).toEqual([{ id: 'a', served: true }, { id: 'b', served: false }]);
-    expect(s.view().items).toEqual([{ id: 'i0', pressed: false }, { id: 'i1', pressed: true }]); expect(s.view().returned).toBe(1);
+    expect(s.view().items).toEqual([{ id: 'i0', pressed: false, aria: null }, { id: 'i1', pressed: true, aria: null }]); expect(s.view().returned).toBe(1);
     s.press('i0'); expect(s.view().bubble).toBe('s1'); expect(s.done).toBe(true); expect(s.view().returned).toBe(2);
   });
   it('faces：按第 i 個就交給第 i 個人，bubble 是 says[i]；沒有 back 時 returned 是 0', () => {
@@ -280,6 +287,13 @@ describe('handout', () => {
     expect(s.view().bubble).toBe('s2'); expect(s.view().people.map((p) => p.served)).toEqual([false, false, true]);
     expect(s.view().returned).toBe(0); expect(s.view().give).toBe(null); expect(s.view().back).toBe(null);
     expect(s.auto()).toBe('i0');
+  });
+  it('aria：每個按鈕帶設定裡對應的說明，按過也不變；沒給時是 null', () => {
+    const s = createScene({ ...handoutFaces, aria: ['give a', 'give b', 'give c'] });
+    expect(s.view().items.map((it) => it.aria)).toEqual(['give a', 'give b', 'give c']);
+    s.press('i1');
+    expect(s.view().items[1]).toEqual({ id: 'i1', pressed: true, aria: 'give b' });
+    expect(createScene(handoutFaces).view().items.map((it) => it.aria)).toEqual([null, null, null]);
   });
 });
 
@@ -365,6 +379,11 @@ describe('jars', () => {
   it('status 用 count：已放數與總數', () => {
     const s = createScene(jars); s.press('j0'); s.press('j2'); expect(s.view().status).toBe('2 of 10');
   });
+  it('unit：罐子按鈕上數量後面的字，原樣給畫面；沒給時是 null', () => {
+    const s = createScene({ ...jars, unit: 'coins' });
+    expect(s.view().unit).toBe('coins'); s.press('j0'); expect(s.view().unit).toBe('coins');
+    expect(createScene(jars).view().unit).toBe(null);
+  });
 });
 
 describe('多段', () => {
@@ -388,6 +407,19 @@ describe('多段', () => {
   });
   it('單段與只有一段的陣列行為相同', () => {
     expect(json(createScene([any]))).toBe(json(createScene(any)));
+  });
+  it('hideHow：目前這一段的設定說要藏，才是 true；換段時跟著換', () => {
+    const s = createScene([{ ...taps, items: [taps.items[0]] }, { ...ledgerAuto, hideHow: true }]);
+    expect(s.view().hideHow).toBe(false);
+    s.press('i0'); expect(s.view().part).toBe(1); expect(s.view().hideHow).toBe(true);
+    s.advance(1.5); expect(s.done).toBe(true); expect(s.view().hideHow).toBe(true);
+    const back = createScene([{ ...any, hideHow: true }, taps]);
+    expect(back.view().hideHow).toBe(true); back.press('o0'); expect(back.view().hideHow).toBe(false);
+  });
+  it('hideHow：單段也有；不是 true 的值一律當 false', () => {
+    expect(createScene(any).view().hideHow).toBe(false);
+    expect(createScene({ ...any, hideHow: true }).view().hideHow).toBe(true);
+    expect(createScene({ ...any, hideHow: 'yes' }).view().hideHow).toBe(false);
   });
 });
 

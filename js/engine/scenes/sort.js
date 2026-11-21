@@ -33,7 +33,7 @@ export function create(spec) {
         }),
         counters: Boolean(spec.counters),
         finished: finished(),
-        doneText: spec.done,
+        doneText: spec.done ?? null,
       };
     },
     controls: open,

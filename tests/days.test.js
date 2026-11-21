@@ -26,6 +26,8 @@ it('農夫育苗的解說補上了示意', () => expect(d.days.farm.tasks[4].why
 it('帳務第 3 件事是兩段：清單，然後長條圖', () => {
   const s = d.days.acct.tasks[2].scene; expect(s.map((p) => p.type)).toEqual(['tick', 'ledger']);
   expect(s[1].rows.map((r) => r.value)).toEqual(['50 元', '20 元', '22 元', '8 元']); expect(s[1].status).toContain('示意');
+  // the chart takes the whole sheet: the how-line goes away, as in the prototype
+  expect(s[1].hideHow).toBe(true); expect(s[0].hideHow).toBeUndefined();
 });
 
 it('每件事的型別照試作排', () => {

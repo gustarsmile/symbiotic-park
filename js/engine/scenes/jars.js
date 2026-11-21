@@ -15,6 +15,7 @@ export function create(spec) {
         tip,
         left,
         coins: spec.coins,
+        unit: spec.unit ?? null,      // the word shown after each jar's count
         jars: jars.map((j, k) => ({ id: 'j' + k, label: j.label, note: j.note, got: got[k] })),
       };
     },

@@ -1,0 +1,236 @@
+{
+  "harvest": {
+    "does": {
+      "text": "在菜畦採收今天要出的葉菜",
+      "source": "運作設計 6.2（一）"
+    },
+    "bend": true,
+    "carry": "basket"
+  },
+  "herbs": {
+    "does": {
+      "text": "在香草園割香茅和薄荷",
+      "source": "產品線規劃 2.4"
+    },
+    "bend": true,
+    "carry": "basket"
+  },
+  "sort": {
+    "does": {
+      "text": "在集貨棚分級：好看的進菜箱，賣相不好的送加工坊",
+      "source": "產品線規劃 一；運作設計 6.2（二）"
+    }
+  },
+  "pack": {
+    "does": {
+      "text": "在集貨棚把菜裝進訂戶的菜箱",
+      "source": "運作設計 6.2（一）"
+    }
+  },
+  "seed": {
+    "does": {
+      "text": "在溫網室育苗，準備下一輪要種的菜",
+      "source": "運作設計 6.2（一）；運作設計 13.4"
+    },
+    "bend": true
+  },
+  "water": {
+    "does": {
+      "text": "替剛種下去的菜澆水",
+      "source": "例子"
+    },
+    "bend": true
+  },
+  "compost": {
+    "does": {
+      "text": "翻堆肥。廚餘和菜葉會變成肥料，回到田裡",
+      "source": "運作設計 6.2（二）"
+    },
+    "bend": true
+  },
+  "dry": {
+    "does": {
+      "text": "把香草鋪上乾燥盤，低溫烘乾",
+      "source": "產品線規劃 4.1"
+    }
+  },
+  "teabag": {
+    "does": {
+      "text": "把烘乾的香草裝成茶包",
+      "source": "產品線規劃 4.1"
+    }
+  },
+  "sun": {
+    "does": {
+      "text": "在曬場翻曬洛神和菜乾",
+      "source": "產品線規劃 4.1"
+    },
+    "bend": true
+  },
+  "shopkeep": {
+    "does": {
+      "text": "顧門市，把菜箱交給每週來取的家庭",
+      "source": "運作設計 6.2（一）"
+    }
+  },
+  "ledger": {
+    "does": {
+      "text": "在辦公室整理帳本",
+      "source": "運作設計 6.1"
+    },
+    "in": true
+  },
+  "post": {
+    "does": {
+      "text": "把這個月的帳貼上公開牆",
+      "source": "運作設計 6.9"
+    }
+  },
+  "stock": {
+    "does": {
+      "text": "到加工坊盤點茶包和乾貨",
+      "source": "例子"
+    }
+  },
+  "mentor": {
+    "does": {
+      "text": "陪新來的學員認識農場，一步一步帶",
+      "source": "運作設計 6.2（三）"
+    }
+  },
+  "meeting": {
+    "does": {
+      "text": "在辦公室開公益金委員會",
+      "source": "運作設計 6.6"
+    },
+    "in": true
+  },
+  "teach": {
+    "does": {
+      "text": "在黑板前上課",
+      "source": "運作設計 6.7"
+    }
+  },
+  "class": {
+    "does": {
+      "text": "在共學教室上志工課",
+      "source": "運作設計 6.7；運作設計 6.2（三）"
+    },
+    "sit": true
+  },
+  "learn": {
+    "does": {
+      "text": "跟著導師學農作",
+      "source": "運作設計 6.2（三）"
+    },
+    "bend": true
+  },
+  "learnSeed": {
+    "does": {
+      "text": "在溫網室學育苗",
+      "source": "運作設計 6.2（三）；運作設計 13.4"
+    },
+    "bend": true
+  },
+  "cook": {
+    "does": {
+      "text": "在共食廚房備菜，用的是當週剩下的菜",
+      "source": "運作設計 6.2（二）"
+    }
+  },
+  "fetch": {
+    "does": {
+      "text": "到門口接放學的孩子",
+      "source": "運作設計 6.2（三）；運作設計 6.4"
+    }
+  },
+  "tutor": {
+    "does": {
+      "text": "陪孩子寫功課",
+      "source": "運作設計 6.2（三）"
+    },
+    "sit": true
+  },
+  "study": {
+    "does": {
+      "text": "放學來上課、寫功課",
+      "source": "運作設計 6.4"
+    },
+    "sit": true
+  },
+  "eat": {
+    "does": {
+      "text": "坐下來一起吃飯。每週一次，誰都可以來",
+      "source": "運作設計 6.4"
+    },
+    "sit": true
+  },
+  "pickup": {
+    "does": {
+      "text": "來門市取這禮拜的菜箱",
+      "source": "運作設計 6.2（一）"
+    }
+  },
+  "home": {
+    "does": {
+      "text": "帶著菜箱回家",
+      "source": "例子"
+    },
+    "carry": "box",
+    "out": true
+  },
+  "rest": {
+    "does": {
+      "text": "午休吃飯",
+      "source": "例子"
+    },
+    "sit": true
+  },
+  "chat": {
+    "does": {
+      "text": "在公園坐著聊天",
+      "source": "例子；口頭決定 2026-11-20"
+    },
+    "sit": true
+  },
+  "stroll": {
+    "does": {
+      "text": "在公園散步",
+      "source": "口頭決定 2026-11-20"
+    }
+  },
+  "boxes": {
+    "does": {
+      "text": "把裝好的菜箱送到門市",
+      "source": "運作設計 6.2（一）"
+    },
+    "carry": "box"
+  },
+  "tea": {
+    "does": {
+      "text": "把包好的茶包送到門市",
+      "source": "產品線規劃 七"
+    },
+    "carry": "tea"
+  },
+  "scraps": {
+    "does": {
+      "text": "把廚餘提去堆肥區",
+      "source": "運作設計 6.2（二）"
+    },
+    "carry": "bucket"
+  },
+  "look": {
+    "does": {
+      "text": "在公開牆前看今天的帳",
+      "source": "運作設計 6.9"
+    }
+  },
+  "leave": {
+    "does": {
+      "text": "收工回家",
+      "source": "例子"
+    },
+    "out": true
+  }
+}

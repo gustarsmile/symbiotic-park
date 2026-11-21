@@ -32,7 +32,9 @@ export function createPark(data, { rng = createRng(20261120) } = {}) {
     },
 
     beginRole(roleId, ti = 0) {
-      const day = data.days[roleId];
+      const day = Object.prototype.hasOwnProperty.call(data.days, roleId) ? data.days[roleId] : null;
+      if (!day) throw new Error(`beginRole: unknown role ${roleId}`);
+      if (!Number.isInteger(ti) || ti < 0 || ti >= day.tasks.length) throw new Error(`beginRole: bad task index ${ti} for role ${roleId}`);
       newRun();
       state.mode = 'role'; state.role = roleId; state.ti = ti;
       state.clock = Math.max(ROLE_EARLIEST, toMin(day.tasks[ti].at) - LEAD);
@@ -59,11 +61,11 @@ export function createPark(data, { rng = createRng(20261120) } = {}) {
         if (state.ff && state.clock >= toMin(task.at)) state.ff = false;
         if (state.ff) { rate = RATE.ff; speed = NPC_SPEED_FF; } else rate = RATE.role;
         const hold = toMin(task.hold);
-        state.clock = state.ff ? state.clock + rate * dt : Math.max(state.clock, Math.min(state.clock + rate * dt, hold));
+        state.clock = state.ff ? Math.min(state.clock + rate * dt, toMin(task.at)) : Math.max(state.clock, Math.min(state.clock + rate * dt, hold));
       } else {
         if (state.mode === 'end') rate = RATE.end;
         state.clock += rate * dt;
-        if (state.mode !== 'end' && state.clock > DAY_END) {
+        if (state.clock > DAY_END) {
           state.clock = DAY_START;
           park.agents.forEach((a) => resetAgent(a, data.map, rng));
         }

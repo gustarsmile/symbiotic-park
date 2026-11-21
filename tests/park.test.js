@@ -123,4 +123,37 @@ describe('園區模擬核心', () => {
     const me = park.player; park.select(me); expect(me.paused).toBe(false); expect(park.state.sel).toBe(null);
   });
   it('沒有開著的場景時 press 回 ok:false', () => { expect(park.press('x')).toEqual({ ok: false, tip: null }); });
+  it('快轉時一格很長也不會跳過下一件事的時間', () => {
+    park.beginRole('farm'); playTask(park); expect(park.state.ff).toBe(true);
+    const at = toMin(d.days.farm.tasks[1].at), hold = toMin(d.days.farm.tasks[1].hold);
+    park.tick(60); expect(park.state.clock).toBe(at);
+    park.tick(0.05); expect(park.state.ff).toBe(false);
+    for (let i = 0; i < 3000; i++) { park.tick(0.05); expect(park.state.clock).toBeLessThanOrEqual(hold); }
+  });
+  it('收工之後時鐘過了截止時間也會從清晨重來', () => {
+    park.beginRole('farm', d.days.farm.tasks.length - 1); playTask(park); expect(park.state.mode).toBe('end');
+    let wrapped = false;
+    for (let i = 0; i < 9000; i++) { park.tick(0.05); if (park.state.clock < 500) wrapped = true; expect(park.state.clock).toBeLessThanOrEqual(1180); }
+    expect(wrapped).toBe(true); expect(park.state.clock).toBeLessThan(1180);
+    for (const a of park.agents) expect(Number.isFinite(a.x) && Number.isFinite(a.y)).toBe(true);
+  });
+  it('接手角色的參數不對就丟錯，什麼都不變，之後還能照常走', () => {
+    park.beginRole('farm');
+    const snap = JSON.parse(JSON.stringify({ ...park.state, scene: null, sel: null }));
+    const agents = park.agents;
+    expect(() => park.beginRole('nope')).toThrow(/nope/);
+    expect(() => park.beginRole('farm', 99)).toThrow(/99/);
+    expect(() => park.beginRole('farm', 1.5)).toThrow(/1.5/);
+    expect(JSON.parse(JSON.stringify({ ...park.state, scene: null, sel: null }))).toEqual(snap);
+    expect(park.agents).toBe(agents);
+    expect(() => park.tick(0.05)).not.toThrow();
+  });
+  it('快轉中回選單或換角色：一天是乾淨的', () => {
+    park.beginRole('farm'); playTask(park); expect(park.state.ff).toBe(true);
+    let run = park.state.run; park.toMenu();
+    expect(park.state).toMatchObject({ mode: 'menu', ff: false, scene: null, run: run + 1 });
+    park.beginRole('farm'); playTask(park); expect(park.state.ff).toBe(true);
+    park.beginRole('vol');
+    expect(park.state).toMatchObject({ role: 'vol', ti: 0, ff: false, scene: null }); expect(park.player.id).toBe('chunzhi');
+  });
 });

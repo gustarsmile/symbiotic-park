@@ -5,6 +5,7 @@ export const DATA_FILES = [
   'map.json', 'people.json', 'identities.json', 'acts.json',
   'days/farm.json', 'days/work.json', 'days/shop.json', 'days/acct.json',
   'days/learner.json', 'days/vol.json', 'days/mentor.json',
+  'ui.json',
 ];
 
 // days/<role>.json is the day of that role.

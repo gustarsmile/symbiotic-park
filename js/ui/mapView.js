@@ -1,6 +1,6 @@
 // Draws the park onto the canvas: the painted map, the people, the time-of-day tint, the lit windows and the signboards.
 // Ported from the prototype's render and camera code. It reads the park but never changes it.
-import { drawChar, rr, disc } from './character.js';
+import { drawChar, rr, disc, oval } from './character.js';
 import { createCamera, updateCamera } from './camera.js';
 import { $ } from './dom.js';
 import { toMin } from '../engine/time.js';
@@ -108,4 +108,29 @@ export function createMapView(canvas, park, painted, ui, opts = {}) {
   }
 
   return { resize, camera, render, cam, get W() { return W; }, get H() { return H; }, get labelRects() { return labelRects; } };
+}
+
+// What the map adds while the visitor plays a role, as the hooks createMapView takes: a ring and an arrow where the next
+// job is, the visitor's own mark and "you" tag, which signboard is the job, and what the camera follows.
+// Everything comes from the park's state; the card sizes are measured off the page.
+export function roleHooks(park, ui) {
+  const st = park.state, playing = () => st.mode === 'role' && park.player;
+  return {
+    under(g, time) {
+      if (!playing()) return;
+      if (!st.ff) {                                   // where the next job is
+        const p = park.task.spot, k = 0.5 + 0.5 * Math.sin(time * 4), yy = p[1] - 96 - k * 6;
+        g.strokeStyle = 'rgba(240,180,41,' + (0.55 + 0.4 * k) + ')'; g.lineWidth = 3.5; g.beginPath(); g.ellipse(p[0], p[1], 24 + k * 5, 10 + k * 2.4, 0, 0, TAU); g.stroke();
+        g.fillStyle = '#f0b429'; g.beginPath(); g.moveTo(p[0] - 10, yy); g.lineTo(p[0] + 10, yy); g.lineTo(p[0], yy + 13); g.closePath(); g.fill();
+        g.strokeStyle = '#24301f'; g.lineWidth = 1.5; g.stroke();
+      }
+      g.fillStyle = 'rgba(240,180,41,.55)'; oval(g, park.player.x, park.player.y + 1, 20, 8);
+    },
+    currentKey: () => (st.mode === 'role' ? park.task.place : null),
+    labels(pill, ox, oy, s) { const p = playing(); if (p) pill(ui.you, ox + p.x * s, oy + (p.y - 82) * s, '#f0b429', '#24301f'); },
+    cameraRole() {
+      const card = st.scene ? $('sheet').firstElementChild : null;
+      return { target: park.player, cover: card ? card.offsetHeight : $('task').offsetHeight + 24, sheetWidth: card ? card.offsetWidth : 0 };
+    },
+  };
 }

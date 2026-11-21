@@ -1,5 +1,12 @@
 {
-  "period": { "dawn": "清晨", "morning": "早上", "noon": "中午", "afternoon": "下午", "dusk": "傍晚", "night": "晚上" },
+  "period": {
+    "dawn": "清晨",
+    "morning": "早上",
+    "noon": "中午",
+    "afternoon": "下午",
+    "dusk": "傍晚",
+    "night": "晚上"
+  },
   "you": "你",
   "watch": {
     "clock": "看園區運轉",
@@ -8,6 +15,33 @@
     "note": "點任何一個人，看他在做什麼、為什麼這樣安排。點招牌，看那個地方是做什麼的。",
     "go": "選一個角色"
   },
-  "info": { "now": "現在：", "going": "正要去：", "close": "關閉", "sep": "・", "end": "。" },
-  "mapLabel": "園區地圖。點地面走過去，點人物看他在做什麼。"
+  "info": {
+    "now": "現在：",
+    "going": "正要去：",
+    "close": "關閉",
+    "sep": "・",
+    "end": "。"
+  },
+  "mapLabel": "園區地圖。點地面走過去，點人物看他在做什麼。",
+  "task": {
+    "step": "第 %i 件事，共 %t 件",
+    "go": "帶我去",
+    "walking": "走過去中……",
+    "waitTitle": "等一下：%s",
+    "ffNote": "時間快轉中。",
+    "ffClock": "時間快轉中"
+  },
+  "scene": {
+    "next": "好，下一件事",
+    "last": "收工",
+    "countdown": "%s（%n）"
+  },
+  "end": {
+    "title": "收工了",
+    "watch": "看園區自己運轉",
+    "again": "再當一次%s",
+    "menu": "換一個角色",
+    "fine": "這是規劃中的示意，數字是示意。"
+  },
+  "menu": "換角色"
 }

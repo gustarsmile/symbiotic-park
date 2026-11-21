@@ -154,7 +154,7 @@ button.it:active{transform:scale(.94)}
 .lhead b{font-weight:900}
 .num{font-weight:900;font-variant-numeric:tabular-nums}
 .track{height:14px;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);overflow:hidden;margin:3px 0 2px}
-.track i{display:block;height:100%;width:0;transition:width 1.1s cubic-bezier(.2,.7,.2,1)}
+.track i{display:block;height:100%;width:0}       /* the card sets the width every frame from the engine clock, so no transition here */
 .ledger.go .track i{width:var(--w)}
 .track .leaf{background:var(--leaf)} .track .soil{background:var(--soil)} .track .sky{background:var(--sky)} .track .sun{background:var(--sun)}
 .lrow small{font-size:12.5px;color:var(--muted)}

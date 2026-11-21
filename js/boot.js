@@ -1,12 +1,15 @@
-// Starts the page: loads the data, builds the park, and runs the frame loop. For now the page opens straight into watching the park.
+// Starts the page: loads the data, builds the park, and runs the frame loop. For now the page opens straight into watching the park;
+// a role is started from the console (window.__park.park.beginRole) until the welcome and the role list come.
 import { loadData } from './data.js';
 import { createPark } from './engine/park.js';
 import { createAuto, pace } from './engine/auto.js';
 import { createRng } from './engine/rng.js';
-import { safeStorage, loadRecord } from './engine/store.js';
+import { safeStorage, loadRecord, saveRecord, credit } from './engine/store.js';
 import { paintMap } from './ui/paint.js';
-import { createMapView } from './ui/mapView.js';
+import { createMapView, roleHooks } from './ui/mapView.js';
 import { createHud } from './ui/hud.js';
+import { createSceneView } from './ui/sceneView.js';
+import { showEnd, hideEnd } from './ui/endView.js';
 import { agentAt, labelAt } from './ui/hit.js';
 import { frameSeconds } from './ui/loop.js';
 import { $ } from './ui/dom.js';
@@ -36,7 +39,7 @@ function bindInput(canvas, park, view, hud) {
     const had = st.sel;
     park.release(); hud.hideInfo();
     if (hit || had) return;
-    // role mode: tapping bare ground walks there (next task)
+    if (st.mode === 'role') park.walkTo([(sx - view.W / 2) / view.cam.s + view.cam.x, (sy - view.H / 2) / view.cam.s + view.cam.y], false);      // bare ground: walk there
   }
 
   canvas.addEventListener('pointermove', (e) => {
@@ -78,8 +81,22 @@ function build(data, win, storage) {
   const painted = paintMap(data.map, createRng(PAINT_SEED), (win.devicePixelRatio || 1) >= 1.5 ? 2 : 1.5);
   const canvas = $('map');
   const reduceMotion = () => !!win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-  const view = createMapView(canvas, park, painted, data.ui, { win, reduceMotion });
+  const view = createMapView(canvas, park, painted, data.ui, { win, reduceMotion, ...roleHooks(park, data.ui) });
   const hud = createHud(park, auto, data, record, { onMenu() { /* the role list comes with the welcome */ } });
+  const goWatch = () => { hideEnd(); park.beginWatch(); $('hud').hidden = false; };
+  // The day is over: a day finished by hand is counted and saved (auto mode's is not), then the end card.
+  const sheets = createSceneView(park, auto, data, {
+    onEnd() {
+      const role = park.state.role;
+      credit(record, role, auto.on); saveRecord(storage, record);
+      $('hud').hidden = true;
+      showEnd(park.day, data, {
+        onWatch: goWatch,
+        onAgain() { hideEnd(); park.beginRole(role); $('hud').hidden = false; },
+        onMenu: goWatch,                              // until the role list comes, the way out of the end card is the park itself
+      });
+    },
+  });
   park.beginWatch();
   view.resize();
 
@@ -95,7 +112,7 @@ function build(data, win, storage) {
     const dt = frameSeconds(now, last); last = now; time += dt;
     if (win.document.hidden) return;            // a hidden tab skips the whole frame
     const p = pace(dt, auto, park.state.mode);
-    park.tick(p.move); auto.step(p.read); view.camera(dt); view.render(time); hud.update();
+    park.tick(p.move); auto.step(p.read); sheets.update(); view.camera(dt); view.render(time); hud.update();
   }
   raf = win.requestAnimationFrame(frame);
   const stop = () => { stopped = true; win.cancelAnimationFrame?.(raf); win.removeEventListener('resize', view.resize); };

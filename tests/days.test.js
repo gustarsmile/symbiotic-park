@@ -54,6 +54,36 @@ describe.each(['learner', 'vol', 'mentor'])('%s 的一天', (id) => {
 
 it('七個角色一共 46 件事', () => expect(Object.values(d.days).reduce((n, x) => n + x.tasks.length, 0)).toBe(46));
 
+// These wordings differ from the prototype on purpose: the project owner decided them on 2026-11-21.
+describe('使用者 2026-11-21 決定的寫法（跟試作不一樣，是刻意的）', () => {
+  it('志工簽退：記下來是為了保護志工', () => {
+    expect(d.days.vol.tasks[6].why).toEqual({
+      text: '做志工不求回報，時數不是存款，也不排名。記下來是為了保護志工：每週的時數有約定的上限，超過了，就表示園區在拿志工當免費勞力，要改。你做的好事，吃飯的時候會有人說給大家聽，貼上善行故事牆。',
+      source: '運作設計 6.2（三）；運作設計 七；口頭決定 2026-11-20',
+    });
+  });
+  it('看帳的動作：看這個月的帳，不再待確認', () => {
+    expect(d.acts.look.does).toEqual({ text: '在公開牆前看這個月的帳', source: '運作設計 6.9' });
+    expect(d.acts.look.does.source).not.toContain('待確認');
+  });
+  it('門市收店：剩得多不多，每週都要看，不再待確認', () => {
+    expect(d.days.shop.tasks[5].why).toEqual({
+      text: '當週剩下的菜進共食的廚房，不丟掉。剩得多不多，每週都要看：剩食變多，表示種的和訂的對不上。',
+      source: '運作設計 6.2（二）；運作設計 七；產品線規劃 6.6',
+    });
+    expect(d.days.shop.tasks[5].why.source).not.toContain('待確認');
+  });
+  it('農夫最後一件事：去看這個月的帳，特寫的標題不變', () => {
+    expect(d.days.farm.tasks[7].title).toBe('去看這個月的帳');
+    expect(d.days.farm.tasks[7].head).toBe('今天賣的每 100 元去了哪裡');
+  });
+});
+
+it('志工備菜那句「賣相不好的，煮起來一樣好吃」的來源待確認', () => {
+  expect(d.days.vol.tasks[1].why.text).toBe('共食用的是當週剩下的菜。賣相不好的，煮起來一樣好吃。');
+  expect(d.days.vol.tasks[1].why.source).toBe('運作設計 6.4；運作設計 6.2（二）；待確認');
+});
+
 it('志工簽退補上了示意', () => expect(d.days.vol.tasks[6].how).toContain('4.5 小時（示意）'));
 
 it('志工的一天沒有任何回報的字眼', () => {

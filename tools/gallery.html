@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Drawing gallery (developer only)</title>
+<style>
+  body { margin: 12px; font: 13px/1.4 sans-serif; background: #f4f1e8; color: #222; }
+  h2 { margin: 18px 0 6px; font-size: 15px; }
+  #mapwrap canvas { width: 800px; max-width: 100%; height: auto; display: block; border: 1px solid #999; }
+  .row { display: flex; align-items: flex-end; gap: 2px; margin: 4px 0; padding: 2px 0; border-bottom: 1px solid #ddd; }
+  .row .nm { width: 70px; font-size: 11px; flex: none; }
+  .row canvas { background: #b9d88c; }
+  .icons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .icons figure { margin: 0; width: 64px; text-align: center; font-size: 10px; }
+  .icons svg { width: 56px; height: 56px; background: #eee; }
+</style>
+</head>
+<body>
+<h1>Drawing gallery</h1>
+<p>Developer page: the painted map, every person in every pose, and the small icons.</p>
+<h2>Map</h2>
+<div id="mapwrap"></div>
+<h2>People: stand, walk, back, sit, three moods, eight things carried</h2>
+<div id="people"></div>
+<h2>Icons</h2>
+<div class="icons" id="icons"></div>
+<script type="module">
+import { loadData } from '../js/data.js';
+import { createRng } from '../js/engine/rng.js';
+import { paintMap } from '../js/ui/paint.js';
+import { drawChar, portrait } from '../js/ui/character.js';
+import { ICON_NAMES, icon } from '../js/ui/icons.js';
+
+const SEED = 20261120;
+const scale = Number(new URLSearchParams(location.search).get('scale')) || 2;
+const CARRY = ['basket', 'crate', 'box', 'tea', 'tray', 'bucket', 'bowl', 'paper'];
+const MOODS = ['smile', 'happy', 'focus'];
+
+// A figure in a state that portrait() does not offer (walking, seen from behind).
+function figure(look, st, px) {
+  const cv = document.createElement('canvas'), w = px, h = Math.round(px * 1.18), k = px / 50;
+  cv.width = w; cv.height = h;
+  const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, w / 2, h - 4);
+  drawChar(c, look, st);
+  return cv;
+}
+const base = { t: 0, ph: 1, moving: false, step: 0, bend: false, sit: false, carry: null, mood: 'smile', dir: 1 };
+
+const data = await loadData('../js/data');
+const painted = paintMap(data.map, createRng(SEED), scale);
+const view = document.createElement('canvas');
+view.width = painted.base.width; view.height = painted.base.height;
+const vc = view.getContext('2d');
+vc.drawImage(painted.base, 0, 0); vc.drawImage(painted.over, 0, 0);
+document.getElementById('mapwrap').appendChild(view);
+
+const people = document.getElementById('people');
+for (const p of data.people) {
+  const row = document.createElement('div'); row.className = 'row';
+  const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.id; row.appendChild(nm);
+  const L = p.look, px = 70;
+  row.appendChild(portrait(L, 'smile', px));
+  row.appendChild(figure(L, { ...base, moving: true, step: 1 }, px));
+  row.appendChild(figure(L, { ...base, back: true }, px));
+  row.appendChild(portrait(L, 'smile', px, null, true));
+  MOODS.forEach((m) => row.appendChild(portrait(L, m, px)));
+  CARRY.forEach((c) => row.appendChild(portrait(L, 'smile', px, c)));
+  people.appendChild(row);
+}
+
+const icons = document.getElementById('icons');
+for (const n of ICON_NAMES) {
+  const f = document.createElement('figure');
+  f.innerHTML = icon(n, 3) + '<figcaption>' + n + '</figcaption>';
+  icons.appendChild(f);
+}
+
+window.__gallery = { painted, scale, view, people: data.people.length };
+</script>
+</body>
+</html>

@@ -34,3 +34,14 @@ export function eachString(obj, cb, path = '') {
   else if (Array.isArray(obj)) obj.forEach((v, i) => eachString(v, cb, join(path, i)));
   else if (obj && typeof obj === 'object') for (const k of Object.keys(obj)) eachString(obj[k], cb, join(path, k));
 }
+
+// Walks the object; whenever a listed key holds a string, calls back with that string and its path.
+export function eachKey(obj, keys, cb, path = '') {
+  if (Array.isArray(obj)) obj.forEach((v, i) => eachKey(v, keys, cb, join(path, i)));
+  else if (obj && typeof obj === 'object') {
+    for (const k of Object.keys(obj)) {
+      if (keys.includes(k) && typeof obj[k] === 'string') cb(obj[k], join(path, k));
+      else eachKey(obj[k], keys, cb, join(path, k));
+    }
+  }
+}

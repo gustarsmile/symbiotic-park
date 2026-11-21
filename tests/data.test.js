@@ -35,9 +35,9 @@ describe('地圖與人物資料', () => {
     expect(d.people[0].day[0].spot[0]).toBeCloseTo(539.2, 1); expect(d.people[0].day[0].spot[1]).toBeCloseTo(1094.4, 1);
   });
 
-  it('身分 10 種、動作 35 種，說明都帶合格的來源', () => {
+  it('身分 10 種、動作 36 種，說明都帶合格的來源', () => {
     expect(Object.keys(d.identities)).toHaveLength(10);
-    expect(Object.keys(d.acts)).toHaveLength(35); // Task 6 加一個之後改成 36
+    expect(Object.keys(d.acts)).toHaveLength(36);
     for (const k in d.identities) expect(isSourced(d.identities[k].why)).toBe(true);
     for (const k in d.acts) expect(isSourced(d.acts[k].does)).toBe(true);
   });

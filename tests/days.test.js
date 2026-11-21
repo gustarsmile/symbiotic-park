@@ -2,13 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { DATA_FILES, assemble } from '../js/data.js';
 import { readData } from './helpers/data.js';
 import { checkDay } from './helpers/days.js';
+import { eachString } from './helpers/sourced.js';
 
 const d = readData();
+const ROLES = ['farm', 'work', 'shop', 'acct', 'learner', 'vol', 'mentor'];
 
 it('days/<角色>.json 放進 days.<角色>', () => {
-  for (const id of ['farm', 'work', 'shop', 'acct']) expect(DATA_FILES).toContain(`days/${id}.json`);
+  for (const id of ROLES) expect(DATA_FILES).toContain(`days/${id}.json`);
   expect(assemble({ 'days/farm.json': { id: 'farm' }, 'map.json': {} }).days).toEqual({ farm: { id: 'farm' } });
-  expect(Object.keys(d.days)).toEqual(expect.arrayContaining(['farm', 'work', 'shop', 'acct']));
+  expect(Object.keys(d.days).sort()).toEqual([...ROLES].sort());
 });
 
 describe.each(['farm', 'work', 'shop', 'acct'])('%s 的一天', (id) => {
@@ -36,6 +38,66 @@ it('每件事的型別照試作排', () => {
   expect(types('work')).toEqual(['taps', 'sort', 'pick', 'quiz', 'sort', 'tick']);
   expect(types('shop')).toEqual(['taps', 'quiz', 'quiz', 'taps', 'handout', 'sort', 'quiz']);
   expect(types('acct')).toEqual(['sort', 'quiz', 'tick+ledger', 'quiz', 'sort', 'jars']);
+  expect(types('learner')).toEqual(['taps', 'any', 'taps', 'tick', 'order', 'tick']);
+  expect(types('vol')).toEqual(['sort', 'taps', 'handout', 'quiz', 'taps+steps', 'taps', 'ledger']);
+  expect(types('mentor')).toEqual(['quiz', 'order', 'quiz', 'tick', 'tick', 'tick']);
+});
+
+describe.each(['learner', 'vol', 'mentor'])('%s 的一天', (id) => {
+  it('件數', () => expect(d.days[id].tasks).toHaveLength({ learner: 6, vol: 7, mentor: 6 }[id]));
+  it('通過共用的檢查', () => checkDay(d.days[id], d));
+  it('代號與接手的人', () => {
+    expect(d.days[id].id).toBe(id);
+    expect(d.days[id].who).toBe({ learner: 'acheng', vol: 'chunzhi', mentor: 'laolin' }[id]);
+  });
+});
+
+it('七個角色一共 46 件事', () => expect(Object.values(d.days).reduce((n, x) => n + x.tasks.length, 0)).toBe(46));
+
+it('志工簽退補上了示意', () => expect(d.days.vol.tasks[6].how).toContain('4.5 小時（示意）'));
+
+it('志工的一天沒有任何回報的字眼', () => {
+  let n = 0;
+  eachString(d.days.vol, (s) => { n++; expect(s).not.toMatch(/存進|換取|點數|積分/); });
+  expect(n).toBeGreaterThan(100); // the whole day was walked, not an empty object
+});
+
+it('學員：三條路都可以，排茶包的四步照試作的順序擺', () => {
+  const [, any, , courses, order, talk] = d.days.learner.tasks.map((t) => t.scene);
+  expect(any.who).toBe('laolin');
+  expect(any.opts.map((o) => o.label)).toEqual(['到外面找工作', '自己承租一塊地來種', '留下來成為社員']);
+  expect(courses.board).toBe(true); expect(courses.items).toHaveLength(4);
+  expect(order.steps).toHaveLength(4); expect(order.show).toEqual([2, 0, 3, 1]);
+  expect(talk.who).toBe('laolin'); expect(talk.say).toBe('「今天學會了哪些？」');
+});
+
+it('志工：分類的兩類、孩子的三題、端菜後的新朋友、簽退的長條', () => {
+  const s = d.days.vol.tasks.map((t) => t.scene);
+  expect(s[0].who).toBe('laolin');
+  expect(s[0].cats.map((c) => c.label)).toEqual(['志工來做', '領薪水的夥伴來做']);
+  expect(s[0].items).toHaveLength(6);
+  expect(s[1].meter).toBe('pot'); expect(s[1].gone).toBe(true); expect(s[1].items).toHaveLength(5);
+  expect(s[2].layout).toBe('faces'); expect(s[2].people).toEqual(['kid1', 'kid2', 'kid3']); expect(s[2].give).toBeUndefined();
+  expect(s[3].q.map((q) => q.who)).toEqual(['kid1', 'kid2', 'kid3']); expect(s[3].done.who).toBe('kid3');
+  for (const f of ['good', 'bad']) expect(new Set(s[3].q.map((q) => q[f])).size).toBe(1);
+  expect(new Set(s[3].q.map((q) => JSON.stringify(q.tip))).size).toBe(1);
+  // four bowls, then the newcomer at the door and one button; the bowl count stays on the status line
+  expect(s[4][0].items).toHaveLength(4);
+  expect(s[4][1].status).toBe('端上桌 4 碗，共 4 碗');
+  expect(s[4][1].show.who).toBe('fam3'); expect(s[4][1].steps.map((st) => st.label)).toEqual(['請他一起坐']);
+  expect(s[5].items.map((it) => [it.icon, it.iconDone])).toEqual([['bucket', 'bucketEmpty'], ['bucket', 'bucketEmpty'], ['bucket', 'bucketEmpty']]);
+  expect(s[6].rows).toHaveLength(1); expect(s[6].before).toBe('0 小時'); expect(s[6].wait).toBe(1.2);
+  expect(s[6].button).toBe('寫上 4.5 小時，簽退');
+});
+
+it('導師：排五步照試作的順序擺；委員會那一場 flip 1', () => {
+  const s = d.days.mentor.tasks.map((t) => t.scene);
+  expect(s[0].who).toBe('acheng');
+  expect(s[1].steps).toEqual(['客人', '學員', '夥伴', '社員', '導師']); expect(s[1].show).toEqual([2, 4, 0, 3, 1]);
+  expect(s[2].flip).toBe(1); expect(s[2].who).toBeUndefined();
+  expect(s[3].board).toBe(true);
+  expect(s[4].who).toBe('kid1'); expect(s[4].say).toBe('「我想做一台會自己澆水的機器。」');
+  expect(s[5].items).toHaveLength(4);
 });
 
 it('烘乾要等 2.6 秒、長條圖 1.5 秒；帳務的長條圖不必等', () => {
@@ -78,4 +140,7 @@ describe('共用的檢查抓得到錯', () => {
   it('少了必要的欄位', () => expect(broken('acct', (x) => { delete x.tasks[1].head; })).toThrow());
   it('不認得的圖示', () => expect(broken('farm', (x) => { x.tasks[0].scene.items[0].icon = 'cabbage'; })).toThrow());
   it('出現時間銀行', () => expect(broken('acct', (x) => { x.did[0] = '時間銀行'; })).toThrow());
+  it('沒有標準答案的回覆沒有來源', () => expect(broken('learner', (x) => { x.tasks[1].scene.opts[0].reply = 'x'; })).toThrow());
+  it('簽退的 4.5 小時沒標示意', () => expect(broken('vol', (x) => { x.tasks[6].how = x.tasks[6].how.replace('（示意）', ''); })).toThrow());
+  it('第二段場景裡的人不存在', () => expect(broken('vol', (x) => { x.tasks[4].scene[1].show.who = 'nobody'; })).toThrow());
 });

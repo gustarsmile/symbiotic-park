@@ -190,11 +190,11 @@ describe('hud: 做完一天的紀錄（接到真的頁面）', () => {
   it('結尾卡的按鈕：再當一次回到那個角色的第一件事；看園區自己運轉回到看園區', async () => {
     const r = await start();
     toLastTask(r, 'learner'); $('sh-next').click();
-    $('end-again').click();
+    now += 400; $('end-again').click();                    // the end card ignores presses just after it appears
     expect(r.park.state.mode).toBe('role'); expect(r.park.state.role).toBe('learner'); expect(r.park.state.ti).toBe(0);
     expect($('end').hidden).toBe(true); expect($('hud').hidden).toBe(false);
     toLastTask(r, 'learner'); $('sh-next').click();
-    $('end-watch').click();
+    now += 400; $('end-watch').click();
     expect(r.park.state.mode).toBe('watch'); expect($('end').hidden).toBe(true); expect($('hud').hidden).toBe(false);
   });
 

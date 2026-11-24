@@ -39,13 +39,34 @@ describe('endView', () => {
 
   it('三顆按鈕各叫各的；沒給的不會出錯', () => {
     const cb = { onWatch: vi.fn(), onAgain: vi.fn(), onMenu: vi.fn() };
-    showEnd(d.days.farm, d, cb);
+    let t = 1000; const now = () => t;                                // the card ignores presses just after it appears
+    showEnd(d.days.farm, d, { ...cb, now });
+    t += 400;
     $('end-watch').click(); expect(cb.onWatch).toHaveBeenCalledTimes(1); expect(cb.onAgain).not.toHaveBeenCalled(); expect(cb.onMenu).not.toHaveBeenCalled();
     $('end-again').click(); expect(cb.onAgain).toHaveBeenCalledTimes(1); expect(cb.onMenu).not.toHaveBeenCalled();
     $('end-menu').click(); expect(cb.onMenu).toHaveBeenCalledTimes(1);
     expect(cb.onWatch).toHaveBeenCalledTimes(1);
-    showEnd(d.days.farm, d, {});
+    showEnd(d.days.farm, d, { now });
+    t += 400;
     expect(() => { $('end-watch').click(); $('end-again').click(); $('end-menu').click(); }).not.toThrow();
+  });
+
+  // A double tap on 收工 must not press what the end card puts under the finger.
+  it('結尾卡剛出現的 0.35 秒內按了不算（鍵盤送出的 click 也一樣）；之後按才算', () => {
+    let t = 1000;
+    const cb = { onWatch: vi.fn(), onAgain: vi.fn(), onMenu: vi.fn() };
+    showEnd(d.days.farm, d, { ...cb, now: () => t });
+    t += 100;
+    $('end-watch').click(); $('end-again').click(); $('end-menu').click();
+    $('end-again').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 }));
+    t += 240; $('end-menu').click();                                  // 340 ms
+    expect(cb.onWatch).not.toHaveBeenCalled(); expect(cb.onAgain).not.toHaveBeenCalled(); expect(cb.onMenu).not.toHaveBeenCalled();
+    t += 60; $('end-again').click();                                  // 400 ms
+    expect(cb.onAgain).toHaveBeenCalledTimes(1); expect(cb.onWatch).not.toHaveBeenCalled(); expect(cb.onMenu).not.toHaveBeenCalled();
+    // shown again: the moment starts again
+    showEnd(d.days.work, d, { ...cb, now: () => t });
+    t += 100; $('end-menu').click(); expect(cb.onMenu).not.toHaveBeenCalled();
+    t += 300; $('end-menu').click(); expect(cb.onMenu).toHaveBeenCalledTimes(1);
   });
 
   it('顯示後焦點在第一顆鈕；再顯示一次不會疊上去；hideEnd 收起來並清空', () => {

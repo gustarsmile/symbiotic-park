@@ -232,12 +232,28 @@ describe('角色清單接到真的頁面', () => {
     page.wait(); btn('acct').click();
     toLastTask(r, 'acct'); $('sh-next').click(); page.frame();
     expect($('end').hidden).toBe(false);
-    $('end-menu').click(); page.wait(50); $('watch-btn').click(); btn('vol').click();
+    page.wait(); $('end-menu').click(); page.wait(50); $('watch-btn').click(); btn('vol').click();
     expect(r.park.state.mode).toBe('menu'); expect(r.record.tried.vol).toBeUndefined(); expect(saved(storage).tried.vol).toBeUndefined();
     page.wait(); btn('work').click(); page.frame();
     expect(r.park.state.role).toBe('work');
     $('menu-btn').click(); page.wait(50); btn('mentor').click();
     expect(r.park.state.mode).toBe('menu'); expect(r.record.tried.mentor).toBeUndefined();
+  });
+
+  it('「收工」連按兩下：第二下落在結尾卡上不算（沒有重來一天、沒回清單、紀錄不變）；過一下再按才算', async () => {
+    const storage = memoryStorage(seen);
+    const r = await page.open({ storage });
+    page.wait(); btn('farm').click();
+    toLastTask(r, 'farm');
+    $('sh-next').click();                                       // 收工, by hand
+    expect($('end').hidden).toBe(false); expect(r.record.done.farm).toBe(1);
+    const run = r.park.state.run, kept = JSON.stringify(saved(storage));
+    page.wait(50); $('end-again').click(); $('end-menu').click(); $('end-watch').click();
+    expect(r.park.state.mode).toBe('end'); expect(r.park.state.run).toBe(run);
+    expect($('end').hidden).toBe(false); expect($('start').hidden).toBe(true);
+    expect(JSON.stringify(saved(storage))).toBe(kept); expect(r.record.done.farm).toBe(1);
+    page.wait(); $('end-again').click();
+    expect(r.park.state.mode).toBe('role'); expect(r.park.state.run).toBe(run + 1); expect(r.park.state.ti).toBe(0);
   });
 
   it('存不了的瀏覽器：照樣能選角色', async () => {
@@ -355,7 +371,7 @@ describe('角色清單接到真的頁面', () => {
     $('sh-next').click(); $('sh-next').click(); page.frame(); page.frame();
     expect(r.record.done.farm).toBe(1); expect(saved(storage).done.farm).toBe(1);
     expect($('end').hidden).toBe(false);
-    $('end-menu').click();
+    page.wait(); $('end-menu').click();
     expect($('end').hidden).toBe(true); expect($('start').hidden).toBe(false); expect(r.park.state.mode).toBe('menu');
     expect(btn('farm').classList.contains('played')).toBe(true);
     expect(btn('farm').querySelector('.role-done').textContent).toBe('✓ 玩過 1 次');
@@ -367,13 +383,13 @@ describe('角色清單接到真的頁面', () => {
     toLastTask(r, 'acct');
     $('sh-next').click(); page.frame();
     expect($('end').hidden).toBe(false); expect(r.record.done.acct).toBeUndefined();
-    $('end-again').click();
+    page.wait(); $('end-again').click();
     expect(r.park.state.mode).toBe('role'); expect(r.park.state.role).toBe('acct'); expect(r.park.state.ti).toBe(0);
     expect(r.auto.on).toBe(true); expect($('start').hidden).toBe(true); expect($('hud').hidden).toBe(false);
     page.frame();
     expect($('auto-btn').hidden).toBe(false); expect($('auto-btn').textContent).toBe(d.ui.auto.on);
     toLastTask(r, 'acct'); $('sh-next').click(); page.frame();
-    $('end-watch').click();
+    page.wait(); $('end-watch').click();
     expect(r.park.state.mode).toBe('watch'); expect($('end').hidden).toBe(true); expect($('start').hidden).toBe(true);
     // the bookkeeper was only run by auto mode: tried, but no count
     $('task-go').click();

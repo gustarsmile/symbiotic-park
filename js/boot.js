@@ -104,7 +104,7 @@ function build(data, win, storage) {
       const role = park.state.role;
       credit(record, role, auto.on); saveRecord(storage, record);
       $('hud').hidden = true;
-      showEnd(park.day, data, { onWatch: beginWatch, onAgain() { beginRole(role); }, onMenu: toMenu });
+      showEnd(park.day, data, { now, onWatch: beginWatch, onAgain() { beginRole(role); }, onMenu: toMenu });
     },
   });
 

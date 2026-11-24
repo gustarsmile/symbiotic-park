@@ -99,6 +99,7 @@ function build(data, win, storage) {
   const hud = createHud(park, auto, data, record, { onMenu: toMenu });
   // The day is over: a day finished by hand is counted and saved (auto mode's is not), then the end card.
   const sheets = createSceneView(park, auto, data, {
+    raf: (cb) => win.requestAnimationFrame(cb),
     onEnd() {
       const role = park.state.role;
       credit(record, role, auto.on); saveRecord(storage, record);

@@ -9,11 +9,13 @@ import { installFakeCanvas } from './helpers/canvas.js';
 import { readData } from './helpers/data.js';
 import { openTask, ALL_TASKS } from './helpers/play.js';
 
-let restore, d, park, auto, view, onEnd, stage;
+let restore, d, park, auto, view, onEnd, stage, frames;
 const $ = (id) => document.getElementById(id);
 const roleAt = (role, i) => { park.beginRole(role, i); openTask(park); view.update(); };
 const idsShown = () => [...stage.querySelectorAll('[data-id]:not([disabled])')].map((b) => b.dataset.id);
 const textNodes = (root) => { const out = [], w = document.createTreeWalker(root, 4); for (let n = w.nextNode(); n; n = w.nextNode()) out.push(n.nodeValue); return out; };
+// The animation frames the card asks for, run by hand.
+const flush = () => frames.splice(0).forEach((cb) => cb(0));
 const pressAuto = () => { stage.querySelector(`[data-id="${park.state.scene.auto()}"]`).click(); view.update(); };
 const finishScene = () => {
   for (let i = 0; i < 400 && !park.state.scene.done; i++) {
@@ -25,7 +27,7 @@ const finishScene = () => {
 
 beforeEach(() => {
   mountPage(); restore = installFakeCanvas(); d = readData(); park = createPark(d); auto = createAuto(park);
-  onEnd = vi.fn(); view = createSceneView(park, auto, d, { onEnd }); stage = $('sh-stage');
+  onEnd = vi.fn(); frames = []; view = createSceneView(park, auto, d, { onEnd, raf: (cb) => frames.push(cb) }); stage = $('sh-stage');
 });
 afterEach(() => restore());
 
@@ -155,6 +157,54 @@ describe('sceneView', () => {
     const b = stage.querySelector('[data-id="i1"]');
     view.update(); view.update();
     expect(stage.querySelector('[data-id="i1"]')).toBe(b);
+  });
+
+  // The stage is drawn anew after every press. For a CSS transition to run, a control whose classes changed first shows
+  // the classes of the one it replaces, and gets its own a frame later.
+  it('採收：按掉的那把先保留原本的樣子，下一格才加上 gone（掉下去的轉場跑得出來）；其他幾把不動、不等', () => {
+    roleAt('farm', 1);
+    expect(frames).toHaveLength(0);                                     // opening the card: nothing before it, nothing delayed
+    const b0 = stage.querySelector('[data-id="i0"]');
+    expect(b0.className).toBe('it');
+    b0.click();
+    const n0 = stage.querySelector('[data-id="i0"]');
+    expect(n0).not.toBe(b0); expect(n0.disabled).toBe(true);
+    expect(n0.className).toBe('it');                                    // the old look first
+    expect(frames).toHaveLength(1);
+    flush();
+    expect(n0.className).toBe('it gone');                               // then the new one
+    expect(stage.querySelector('[data-id="i0"]')).toBe(n0);
+    for (const k of [1, 2, 3, 4, 5]) expect(stage.querySelector(`[data-id="i${k}"]`).className).toBe('it');
+    // a press while the frame is still to come starts again from what is on screen
+    stage.querySelector('[data-id="i1"]').click(); stage.querySelector('[data-id="i2"]').click();
+    expect(['i0', 'i1', 'i2'].map((id) => stage.querySelector(`[data-id="${id}"]`).className)).toEqual(['it gone', 'it', 'it']);
+    flush();
+    expect(['i0', 'i1', 'i2'].map((id) => stage.querySelector(`[data-id="${id}"]`).className)).toEqual(['it gone', 'it gone', 'it gone']);
+  });
+
+  it('黑板打勾也一樣：先是原來的樣子，下一格才變 on；自動模式的框留著', () => {
+    roleAt('mentor', 3);
+    auto.target = 'i1'; view.update();
+    stage.querySelector('[data-id="i0"]').click();
+    const t0 = stage.querySelector('[data-id="i0"]'), t1 = stage.querySelector('[data-id="i1"]');
+    expect(t0.classList.contains('on')).toBe(false); expect(t1.classList.contains('auto-hit')).toBe(true);
+    flush();
+    expect(t0.classList.contains('on')).toBe(true); expect(t0.classList.contains('chalk')).toBe(true);
+    expect(t1.classList.contains('auto-hit')).toBe(true); expect(t1.classList.contains('on')).toBe(false);
+  });
+
+  it('按完換到下一段（新的按鈕）：照新的樣子直接畫，不延後', () => {
+    roleAt('farm', 1);
+    const orig = park.state.scene.view.bind(park.state.scene);
+    park.state.scene.view = () => ({ ...orig(), part: 1, items: orig().items.map((it) => ({ ...it, pressed: true })) });   // same ids, another part
+    view.update();
+    expect([...stage.querySelectorAll('[data-id]')].every((b) => b.className === 'it gone')).toBe(true);
+    expect(frames).toHaveLength(0);
+    park.state.scene.view = orig;
+    while (park.state.scene.view().part === 0) pressAuto();
+    flush();
+    expect(stage.querySelector('[data-id="step"]').className).toBe('step-btn');
+    expect(frames).toHaveLength(0);
   });
 
   it('長條的寬度跟著 progress × width 走，不重畫、不靠 CSS 轉場', () => {
@@ -326,7 +376,7 @@ describe('sceneView', () => {
     expect(stage.querySelectorAll('.tick')).toHaveLength(4);
     expect(stage.querySelectorAll('.tick.chalk')).toHaveLength(0);
     expect(stage.querySelector('.tick.on')).toBeNull();
-    stage.querySelector('[data-id="i0"]').click();
+    stage.querySelector('[data-id="i0"]').click(); flush();             // the new class comes a frame later (see the fall-away tests)
     expect(stage.querySelector('[data-id="i0"]').classList.contains('on')).toBe(true);
   });
 

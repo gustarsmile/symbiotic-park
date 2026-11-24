@@ -7,10 +7,11 @@ import { buildStage, setProgress } from './sceneParts.js';
 import { fill } from '../engine/text.js';
 
 // onEnd(): called once when the last job of the day is finished (by the visitor or by auto mode).
-export function createSceneView(park, auto, data, { onEnd } = {}) {
+// raf(cb): runs cb on the next animation frame (the page's requestAnimationFrame; the test's own in tests).
+export function createSceneView(park, auto, data, { onEnd, raf = (cb) => requestAnimationFrame(cb) } = {}) {
   const ui = data.ui, looks = new Map(data.people.map((p) => [p.id, p.look]));
   const sheet = $('sheet'), card = sheet.firstElementChild, stage = $('sh-stage'), why = $('sh-why'), next = $('sh-next'), status = $('sh-status'), how = $('sh-how');
-  let cur = null, key = '', hitEl = null, endRun = -1, nextLabel = '';
+  let cur = null, key = '', hitEl = null, endRun = -1, nextLabel = '', drawnPart = null;
 
   const face = (id, mood, px, carry, sit) => {
     if (!looks.has(id)) throw new Error('scene names an unknown person: ' + id);
@@ -29,8 +30,31 @@ export function createSceneView(park, auto, data, { onEnd } = {}) {
     if (found) { found.classList.add('auto-hit'); if (found.scrollIntoView) found.scrollIntoView({ block: 'nearest' }); }
   }
 
+  // The classes of each control on the stage now, by id (auto mode's frame left out: markTarget looks after it).
+  const classesById = () => new Map([...stage.querySelectorAll('[data-id]')].map((b) => [b.dataset.id, [...b.classList].filter((c) => c !== 'auto-hit')]));
+
+  // The stage is drawn anew after every change, so a control whose classes changed (a bunch picked: gone; a line ticked:
+  // on) would never show its CSS transition. Such a control starts with the classes of the one it replaces and gets its
+  // own on the next frame. Only within the same part of the scene; a control with nothing before it is drawn as it is.
+  // Under reduced motion the stylesheet turns these transitions off, as before.
+  function replay(before) {
+    const moves = [];
+    for (const b of stage.querySelectorAll('[data-id]')) {
+      const old = before.get(b.dataset.id);
+      if (!old) continue;
+      const add = [...b.classList].filter((c) => !old.includes(c)), drop = old.filter((c) => !b.classList.contains(c));
+      if (!add.length && !drop.length) continue;
+      b.classList.remove(...add); b.classList.add(...drop);
+      moves.push({ b, add, drop });
+    }
+    if (!moves.length) return;
+    for (const { b } of moves) void getComputedStyle(b).opacity;       // the old look is worked out now, so there is something to move from
+    raf(() => { for (const { b, add, drop } of moves) { b.classList.remove(...drop); b.classList.add(...add); } });
+  }
+
   function render(v, controls) {
     const was = document.activeElement, keepId = was && stage.contains(was) ? was.dataset.id : null;
+    const before = v.part === drawnPart ? classesById() : null;
     const env = {
       face,
       wait: [].concat(park.task.scene)[v.part].steps?.some((s) => s.wait) ?? false,
@@ -44,7 +68,8 @@ export function createSceneView(park, auto, data, { onEnd } = {}) {
     for (const b of stage.querySelectorAll('button')) b.disabled = true;       // a button from before this drawing can no longer be pressed
     stage.textContent = '';
     stage.append(...buildStage(v, env));
-    hitEl = null;
+    drawnPart = v.part; hitEl = null;
+    if (before) replay(before);
     if (keepId !== null) focusOn(keepId);
   }
 
@@ -55,7 +80,7 @@ export function createSceneView(park, auto, data, { onEnd } = {}) {
   }
 
   function open(scene) {
-    cur = scene; key = ''; hitEl = null;
+    cur = scene; key = ''; hitEl = null; drawnPart = null;
     const task = park.task, last = park.state.ti === park.day.tasks.length - 1;
     nextLabel = last ? ui.scene.last : ui.scene.next;
     setText($('sh-place'), task.placeName); setText($('sh-title'), task.head); setText(status, '');
@@ -64,7 +89,7 @@ export function createSceneView(park, auto, data, { onEnd } = {}) {
   }
 
   function close() {
-    cur = null; key = ''; hitEl = null; stage.textContent = ''; sheet.hidden = true;
+    cur = null; key = ''; hitEl = null; drawnPart = null; stage.textContent = ''; sheet.hidden = true;
   }
 
   function refresh(fresh) {

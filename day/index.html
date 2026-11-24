@@ -74,14 +74,22 @@
 </div>
 <script type="module" src="../js/main.js"></script>
 <script>
-  // If main.js or any file it imports cannot be loaded, no module code runs at all, so boot() never gets to show the
-  // retry panel: these lines show it in place of the loading line, and its button reloads the page. Once the modules
-  // have loaded this event does not fire, and boot() handles every failure itself.
-  document.querySelector('script[type="module"]').addEventListener('error', function () {
-    document.getElementById('start').hidden = true;
-    document.getElementById('load-error').hidden = false;
-    document.getElementById('load-retry').onclick = function () { location.reload(); };
-  });
+  // If the program cannot start, no module code runs at all, so boot() never gets to show the retry panel: these lines
+  // show it in place of the loading line, and its button reloads the page. That is the case when main.js or a file it
+  // imports cannot be fetched (the error event), and when they are fetched but cannot be linked, parsed or run: then
+  // main.js has not left its mark by the time the page has loaded. Once the modules have run, neither happens, and
+  // boot() handles every failure itself.
+  (function () {
+    function fail() {
+      document.getElementById('start').hidden = true;
+      document.getElementById('load-error').hidden = false;
+      document.getElementById('load-retry').onclick = function () { location.reload(); };
+    }
+    document.querySelector('script[type="module"]').addEventListener('error', fail);
+    window.addEventListener('load', function () {
+      if (document.documentElement.getAttribute('data-park') !== 'started') fail();
+    });
+  })();
 </script>
 </body>
 </html>

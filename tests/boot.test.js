@@ -164,10 +164,14 @@ describe('boot', () => {
     mod.type = 'text/plain'; mod.setAttribute('src', /src="([^"]+)"/.exec(tag)[1]);
     document.getElementById('module-here').replaceWith(mod);
     mod.setAttribute('type', 'module');
-    const reload = vi.fn();
-    new Function('document', 'location', hook[0])(document, { reload });
+    document.documentElement.removeAttribute('data-park');                       // main.js sets it once the modules have run
+    const reload = vi.fn(), on = {};
+    const pageWin = { addEventListener(type, fn) { (on[type] ??= []).push(fn); } };
+    new Function('document', 'location', 'window', hook[0])(document, { reload }, pageWin);
+    reload.fire = (type) => (on[type] ?? []).forEach((fn) => fn(new Event(type)));   // the window's own events, by hand
     return reload;
   };
+  const modulesRan = () => document.documentElement.setAttribute('data-park', 'started');   // what main.js does first
 
   it('程式檔（main.js 或它引用的檔）載不到：頁面上那一小段把「載入中」換成再試一次，按了重新載入頁面', () => {
     expect(hook).toHaveLength(1);
@@ -179,10 +183,34 @@ describe('boot', () => {
     expect(err.hidden).toBe(false); expect(document.getElementById('start').hidden).toBe(true);
     document.getElementById('load-retry').click();
     expect(reload).toHaveBeenCalledTimes(1);
+    reload.fire('load');                                                         // the page's load event comes after: still one panel, one reload a press
+    expect(err.hidden).toBe(false);
+    document.getElementById('load-retry').click();
+    expect(reload).toHaveBeenCalledTimes(2);
+  });
+
+  // A module that is there but cannot be linked (an import names an export that is missing, e.g. an old cached file next
+  // to a new one), cannot be parsed, or throws at the top: no error event on the tag, but main.js never runs either.
+  it('模組都抓到了卻跑不起來（連結、語法或一開頭就出錯）：載完時 main.js 沒留下記號，就換成再試一次，按了重新載入', () => {
+    const reload = mountWithHook();
+    const err = document.getElementById('load-error');
+    reload.fire('load');
+    expect(err.hidden).toBe(false); expect(document.getElementById('start').hidden).toBe(true);
+    document.getElementById('load-retry').click();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('模組跑起來了（main.js 留下記號）：載完時什麼都不動', () => {
+    const reload = mountWithHook();
+    modulesRan(); reload.fire('load');
+    expect(document.getElementById('load-error').hidden).toBe(true); expect(document.getElementById('start').hidden).toBe(false);
+    expect(document.getElementById('load-retry').onclick).toBeNull();
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it('程式載好了以後由 boot 自己處理：那一小段不插手（再試一次是重新載入資料，不是重新整理頁面）', async () => {
     const reload = mountWithHook();
+    modulesRan(); reload.fire('load');                                           // the modules ran; the data is still on its way
     let online = false;
     const fetchFn = (url) => (online ? diskFetch(url) : Promise.reject(new Error('offline')));
     const win = makeWin();

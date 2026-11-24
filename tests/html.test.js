@@ -61,6 +61,16 @@ describe('html', () => {
     expect(hook).toContain(`getElementById('load-error').hidden = false`);
     expect(hook).toContain('location.reload()');
     expect(hook).not.toMatch(/[　-〿一-鿿＀-￯]/);
+    // and on the page's load event it looks for the mark main.js leaves
+    expect(hook).toContain(`window.addEventListener('load'`);
+    expect(hook).toContain(`document.documentElement.getAttribute('data-park') !== 'started'`);
+  });
+
+  it('main.js 第一句就留下記號（在 boot() 之前，也在任何會出錯的事之前）', () => {
+    const main = read('js/main.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const statements = main.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('import '));
+    expect(statements[0]).toBe(`document.documentElement.setAttribute('data-park', 'started');`);
+    expect(statements.findIndex((l) => l.includes('boot('))).toBeGreaterThan(0);
   });
   it('分享預覽圖是 1200×630 的 PNG；小圖示存在', () => {
     const b = readFileSync('assets/og.png');

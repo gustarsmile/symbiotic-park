@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Share picture and icon (developer only)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+  body { margin: 12px; font: 13px/1.4 sans-serif; background: #f4f1e8; color: #222; }
+  canvas { display: block; margin: 8px 0; border: 1px solid #999; }
+  #og { width: 1200px; height: 630px; }
+</style>
+</head>
+<body>
+<h1>Share picture (1200x630) and icon (96x96)</h1>
+<p>Developer page. Open it, then read <code>canvas.toDataURL('image/png')</code> of each canvas and save them as assets/og.png and assets/favicon.png.</p>
+<canvas id="og"></canvas>
+<canvas id="icon" width="96" height="96"></canvas>
+<script type="module">
+import { loadData } from '../js/data.js';
+import { createRng } from '../js/engine/rng.js';
+import { createPark } from '../js/engine/park.js';
+import { settle } from '../js/engine/agents.js';
+import { toMin } from '../js/engine/time.js';
+import { paintMap } from '../js/ui/paint.js';
+import { createMapView } from '../js/ui/mapView.js';
+import { portrait } from '../js/ui/character.js';
+import { SITE_TITLE, SITE_TAGLINE } from '../js/config.js';
+
+const W = 1200, H = 630, SEED = 20261120, FONT = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+
+// The font arrives in pieces by character, so ask for exactly the characters drawn below.
+await Promise.all([document.fonts.load('900 64px "Noto Sans TC"', SITE_TITLE), document.fonts.load('500 26px "Noto Sans TC"', SITE_TAGLINE)]);
+await document.fonts.ready;
+
+const data = await loadData('../js/data');
+const park = createPark(data);
+park.toMenu();                                           // no signboards, nobody selected
+park.state.clock = toMin('16:10');
+settle(park.agents, park.state.clock, data.acts, data.map, createRng(SEED));
+
+// The map, whole: the camera is put on the middle of the park, far enough back that the whole circle fits.
+const cv = document.getElementById('og');
+cv.width = W; cv.height = H;
+const painted = paintMap(data.map, createRng(SEED), 1.5);
+const view = createMapView(cv, park, painted, data.ui, { win: { innerWidth: W, innerHeight: H, devicePixelRatio: 1 }, reduceMotion: () => true });
+view.resize();
+view.cam.x = data.map.world.cx; view.cam.y = data.map.world.cy; view.cam.s = H / (data.map.world.edge * 2 + 20);
+view.render(0);
+
+// The words, at the top left, on a soft card.
+const c = cv.getContext('2d');
+c.setTransform(1, 0, 0, 1, 0, 0);
+c.fillStyle = 'rgba(251,246,233,.92)'; c.strokeStyle = 'rgba(36,48,31,.3)'; c.lineWidth = 2;
+c.beginPath(); c.roundRect(36, 36, 470, 150, 22); c.fill(); c.stroke();
+c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+c.fillStyle = '#1f4d29'; c.font = '900 64px ' + FONT; c.fillText(SITE_TITLE, 66, 116);
+c.fillStyle = '#5c6650'; c.font = '500 26px ' + FONT; c.fillText(SITE_TAGLINE, 68, 160);
+
+// The icon: the first farmer's face with a basket.
+const ic = document.getElementById('icon'), g = ic.getContext('2d');
+g.fillStyle = '#b9d88c'; g.fillRect(0, 0, 96, 96);
+const who = data.people.find((p) => p.id === data.days.farm.who);
+g.drawImage(portrait(who.look, 'happy', 80, 'basket'), 8, 2, 80, 94);
+
+window.__og = { ready: true, og: cv, icon: ic };
+</script>
+</body>
+</html>

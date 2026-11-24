@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { SITE_URL, PARK_PATH } from '../js/config.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -32,5 +32,12 @@ describe('html', () => {
   });
   it('後面的程式要用到的元素都在', () => {
     for (const id of IDS) expect(day).toContain(`id="${id}"`);
+  });
+  it('分享預覽圖是 1200×630 的 PNG；小圖示存在', () => {
+    const b = readFileSync('assets/og.png');
+    expect(b.readUInt32BE(16)).toBe(1200); expect(b.readUInt32BE(20)).toBe(630);
+    expect(existsSync('assets/favicon.png')).toBe(true);
+    expect(day).toContain('rel="icon" type="image/png" href="../assets/favicon.png"');
+    expect(home).toContain('href="assets/favicon.png"');
   });
 });

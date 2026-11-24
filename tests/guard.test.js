@@ -31,6 +31,9 @@ describe('公開前的守門', () => {
     expect(files.length).toBeGreaterThan(20);
     for (const f of files) expect(code(f), f).not.toMatch(/[　-〿一-鿿＀-￯]/);
   });
+  it('程式不用 Object.hasOwn（iOS 15.4 以前沒有；用 hasOwnProperty.call）', () => {
+    for (const f of walk('js').filter((p) => p.endsWith('.js'))) expect(code(f), f).not.toMatch(/Object\.hasOwn\b/);
+  });
   it('engine 不碰畫面，也不用真實時間', () => {
     const files = walk('js/engine');
     expect(files.length).toBeGreaterThan(5);

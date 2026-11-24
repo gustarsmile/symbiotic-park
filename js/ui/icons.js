@@ -40,7 +40,7 @@ export const ICON_NAMES = Object.keys(IC);
 
 // The SVG string for an icon. `arg` is the number of layers (0 to 5) for the pot. An unknown name is an error.
 export function icon(name, arg) {
-  if (!Object.hasOwn(IC, name)) throw new Error('unknown icon: ' + name);
+  if (!Object.prototype.hasOwnProperty.call(IC, name)) throw new Error('unknown icon: ' + name);
   const v = IC[name];
   return typeof v === 'function' ? v(arg) : v;
 }

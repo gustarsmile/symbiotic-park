@@ -14,6 +14,15 @@ describe('icons', () => {
     for (const n of used) expect(ICON_NAMES).toContain(n);
   });
   it('不認得的名稱會報錯，不是靜靜畫不出來', () => expect(() => icon('nope')).toThrow());
+  it('沒有 Object.hasOwn 的瀏覽器（iOS 15.4 以前）也畫得出來，不認得的名稱照樣報錯', () => {
+    const had = Object.hasOwn;
+    delete Object.hasOwn;
+    try {
+      for (const n of ICON_NAMES) expect(icon(n, 2)).toMatch(/^<svg/);
+      expect(() => icon('nope')).toThrow(/unknown icon/);
+      expect(() => icon('toString')).toThrow(/unknown icon/);
+    } finally { Object.hasOwn = had; }
+  });
   it('鍋子的層數不同，畫出來的也不同', () => { expect(icon('pot', 0)).not.toBe(icon('pot', 5)); });
   it('多了手機與感測器：照現有的畫法（64 格、平塗、底下一個淡淡的影子），兩個畫得不一樣', () => {
     for (const n of ['phone', 'sensor']) {

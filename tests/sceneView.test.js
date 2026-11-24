@@ -334,6 +334,17 @@ describe('sceneView', () => {
     expect(stage.querySelector('.tip').textContent).toBe(park.task.scene.says[1]);
   });
 
+  it('交菜箱（人臉）：還沒收回空箱時，底下沒有一排空白；收回第一個才出現那一排', () => {
+    roleAt('shop', 4);
+    expect(stage.querySelectorAll('.items')).toHaveLength(0);
+    expect(stage.lastElementChild.classList.contains('tip')).toBe(true);
+    stage.querySelector('[data-id="i0"]').click();
+    expect(stage.querySelectorAll('.items')).toHaveLength(1);
+    expect(stage.querySelectorAll('.items > .it.still')).toHaveLength(1);
+    roleAt('farm', 6);                                                 // the counter: its row of boxes is always there
+    expect(stage.querySelectorAll('.items > .it')).toHaveLength(3);
+  });
+
   it('罐子：錢幣一枚一枚少，滿了的罐子出現提示', () => {
     roleAt('acct', 5);
     expect(stage.querySelectorAll('.pile .coin')).toHaveLength(10);

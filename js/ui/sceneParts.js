@@ -122,7 +122,7 @@ const PARTS = {
         row.append(b);
       }
     }
-    return out.concat(row);
+    return row.childNodes.length ? out.concat(row) : out;            // no empty row (the faces layout before any box comes back)
   },
 
   // Bars are drawn empty; the card sets each width from the engine's progress every frame (data-w is the full width in percent).

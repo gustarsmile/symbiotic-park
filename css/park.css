@@ -200,6 +200,6 @@ button.it:active{transform:scale(.94)}
   .sheet{align-items:center;justify-content:flex-end;padding-top:70px;padding-bottom:16px;padding-right:max(16px,env(safe-area-inset-right,0px))}
   .sheet-card{max-width:400px;border-radius:14px;max-height:100%}
 }
-@media (prefers-reduced-motion:reduce){.it,.fam,.track i,.bar.run i,.auto-row .sw,.auto-row .sw::after{transition:none}}
+@media (prefers-reduced-motion:reduce){.it,.fam,.track i,.bar.run i,.auto-row .sw,.auto-row .sw::after,.tick.chalk b{transition:none}}
 
 #load-error .panel,#loading{text-align:center}

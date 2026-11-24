@@ -77,4 +77,17 @@ describe('html', () => {
     for (const f of tools) expect(read(`tools/${f}`), f).toMatch(/<head>[\s\S]*<meta name="robots" content="noindex">[\s\S]*<\/head>/);
     for (const page of [home, day]) expect(page).not.toMatch(/noindex/);
   });
+
+  // The close-up's controls are drawn anew with their old classes and get the new ones a frame later, so their
+  // transitions run: a picked bunch falls away (.it), a chalk line lights up (.tick.chalk b).
+  it('少一點動畫的設定：特寫裡會跑的轉場都在關掉的名單裡；名單外的只剩 .facebtn（靠 :disabled，一畫出來就是按過的樣子，從來不跑）', () => {
+    const css = read('css/park.css');
+    const rule = /@media \(prefers-reduced-motion:reduce\)\{([^{}]*)\{transition:none\}\}/.exec(css);
+    expect(rule).not.toBeNull();
+    const off = rule[1].split(',').map((s) => s.trim());
+    for (const sel of ['.it', '.tick.chalk b']) expect(off).toContain(sel);
+    const moving = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^{}]*\btransition:(?!none)[^{}]*\}/g)].flatMap((m) => m[1].split(',').map((s) => s.trim()));
+    expect(moving.length).toBeGreaterThan(5);
+    expect(moving.filter((sel) => !off.includes(sel))).toEqual(['.facebtn']);
+  });
 });

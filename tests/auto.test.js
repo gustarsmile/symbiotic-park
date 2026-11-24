@@ -149,15 +149,20 @@ describe('auto', () => {
   function pressesIn(role, ti, speed = 1) {
     const pk = createPark(data), a = createAuto(pk);
     a.setSpeed(speed); a.set(true); pk.beginRole(role, ti);
-    const out = []; let t = 0, rejected = 0;
+    const out = []; let t = 0, rejected = 0, opened = null;
     const press = pk.press.bind(pk);
     pk.press = (id) => { const r = press(id); if (!r.ok) rejected++; out.push({ t, line: pk.state.scene.view().show?.text ?? null }); return r; };
-    for (let n = 0; n < 40000 && pk.state.mode === 'role' && pk.state.ti === ti; n++) { const p = pace(DT, a, pk.state.mode); pk.tick(p.move); a.step(p.read); t += p.read; }
-    return { presses: out, finished: t, rejected, step: DT * (speed === 1.5 ? FAST.read : 1) };
+    for (let n = 0; n < 40000 && pk.state.mode === 'role' && pk.state.ti === ti; n++) {
+      const p = pace(DT, a, pk.state.mode); pk.tick(p.move); a.step(p.read);
+      if (opened === null && pk.state.scene) opened = t;            // the close-up appeared during this step
+      t += p.read;
+    }
+    return { presses: out, opened, finished: t, rejected, step: DT * (speed === 1.5 ? FAST.read : 1) };
   }
   const gaps = (r) => r.presses.slice(1).map((p, i) => p.t - r.presses[i].t);
-  // A pause of w seconds, then the highlight, then the press: counted in whole steps, so up to four steps more.
-  const near = (g, w, step) => { expect(g).toBeGreaterThanOrEqual(w - 1e-9); expect(g).toBeLessThan(w + 4 * step + 1e-9); };
+  // A pause of w seconds, then the highlight, then the press: counted in whole steps (and summed in floating point),
+  // so up to five steps more.
+  const near = (g, w, step) => { expect(g).toBeGreaterThanOrEqual(w - 1e-9); expect(g).toBeLessThan(w + 5 * step + 1e-9); };
 
   it('一句話要讀的秒數：3 秒加每個字 0.16 秒，最少 3 秒、最多 18 秒', () => {
     expect(lineSeconds('')).toBe(3); expect(lineSeconds('短')).toBeCloseTo(3.16, 9);
@@ -188,6 +193,19 @@ describe('auto', () => {
     expect(v.presses.map((p) => p.line)).toEqual([null, null, null, data.days.vol.tasks[4].scene[1].show.text, data.days.vol.tasks[4].scene[1].steps[0].show.text]);
     vg.slice(0, 3).forEach((g) => near(g, AUTO.afterPress + AUTO.highlight, DT));
     near(vg[3], lineSeconds(v.presses[3].line) + AUTO.highlight, DT);
+  });
+
+  it('特寫一打開就有人說話：第一句也等讀得完才按；打開時沒有人說話的特寫照舊', () => {
+    const talk = data.days.farm.tasks[0].scene;
+    for (const speed of [1, 1.5]) {
+      const r = pressesIn('farm', 0, speed);
+      expect(r.opened).not.toBeNull();
+      expect(r.presses[0].t - r.opened).toBeGreaterThanOrEqual(lineSeconds(talk.show.text) - 1e-9);
+      near(r.presses[0].t - r.opened, lineSeconds(talk.show.text) + AUTO.highlight, r.step);
+      const h = pressesIn('farm', 1, speed);                       // the harvest opens on six bunches and no words
+      near(h.presses[0].t - h.opened, AUTO.sceneOpen + AUTO.highlight, h.step);
+    }
+    expect(lineSeconds(talk.show.text)).toBeGreaterThan(AUTO.sceneOpen);
   });
 
   it('農夫整輪自動跑到結尾卡，沒有一次被擋', () => {

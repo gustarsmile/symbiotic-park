@@ -162,6 +162,19 @@ describe('當農夫時的老林', () => {
   const laolin = () => park.agents.find((a) => a.id === 'laolin');
   const spotOf = (act) => d.days.farm.npc.find((o) => o.add && o.add.act === act).add.spot;
 
+  it('大門口那一幕：你走幾步（超過 NEAR、不到 120）到老林旁邊，跟他隔 30 到 45', () => {
+    const job = d.days.farm.tasks[0], gate = spotOf('welcome');
+    const fromStart = Math.hypot(job.spot[0] - d.map.start[0], job.spot[1] - d.map.start[1]);
+    expect(fromStart).toBeGreaterThan(NEAR); expect(fromStart).toBeLessThanOrEqual(120);
+    const apart = Math.hypot(job.spot[0] - gate[0], job.spot[1] - gate[1]);
+    expect(apart).toBeGreaterThanOrEqual(30); expect(apart).toBeLessThanOrEqual(45);
+    park.beginRole('farm'); park.tick(0.05);
+    expect(park.state.near).toBe(false);                     // the talk does not open where you come in
+    walkIn();
+    expect([park.player.x, park.player.y]).toEqual(job.spot); expect(park.state.scene).not.toBeNull();
+    expect([laolin().x, laolin().y]).toEqual(gate);
+  });
+
   it('一開始（06:12）老林就站在大門口：看得見、到了、沒有在走，你說話的時候他也不走開', () => {
     park.beginRole('farm');
     expect(park.state.clock).toBe(372);

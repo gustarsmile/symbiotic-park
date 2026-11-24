@@ -69,15 +69,17 @@ describe('電腦人物不跟你做同一件事', () => {
 });
 
 describe('角色資料裡的錯開設定', () => {
-  it('只有門市、農夫、加工三個角色有；門市、加工各一條，農夫另外加了老林的兩格', () => {
+  it('只有門市、農夫、加工三個角色有；門市、加工各一條，農夫另外加了老林的三格', () => {
     const withNpc = Object.keys(d.days).filter((id) => 'npc' in d.days[id]).sort();
     expect(withNpc).toEqual(['farm', 'shop', 'work']);
     expect(d.days.shop.npc).toEqual([{ who: 'ahe', at: '15:20', drop: true }]);
     expect(d.days.farm.npc).toEqual([
       { who: 'guyu', at: '13:00', act: 'greet' },
-      // the gate spot is 20 to the right of and 20 below the one first planned, so the 大門 signboard does not cover him
-      { who: 'laolin', at: '06:00', add: { via: 'G', spot: [922, 1202], act: 'welcome' } },
+      // he waits a short way up the avenue from the gate, beside it, clear of the 大門 signboard and the gate beam
+      { who: 'laolin', at: '06:00', add: { via: 'G', spot: [773.6, 1054.7], act: 'welcome' } },
       { who: 'laolin', at: '06:30', add: { via: 'beds', spot: [524.3, 1061.2], act: 'guide' } },
+      // once the harvest is over he strolls in the park, so his card does not say he is still guiding you
+      { who: 'laolin', at: '07:45', add: { via: 'L1', spot: [756.1, 756.1], act: 'stroll' } },
     ]);
     expect(d.days.work.npc).toEqual([{ who: 'lixia', at: '15:00', drop: true }]);
   });
@@ -93,12 +95,12 @@ describe('角色資料裡的錯開設定', () => {
       }
       expect(() => applyOverrides(d.people, day.npc)).not.toThrow();
     }
-    expect(adds).toBe(2);
+    expect(adds).toBe(3);
   });
 
   it('add 用到的路口與動作都存在', () => {
     const all = Object.values(d.days).flatMap((day) => (day.npc ?? []).filter((o) => 'add' in o));
-    expect(all).toHaveLength(2);
+    expect(all).toHaveLength(3);
     for (const o of all) {
       expect(o.at).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
       expect(d.map.nodes[o.add.via], o.add.via).toBeTruthy();
@@ -141,7 +143,24 @@ describe('加一格（add）', () => {
   const add = (who, at, extra = {}) => ({ who, at, add: { via: 'G', spot: [902, 1182], act: 'welcome' }, ...extra });
 
   it('當農夫時，老林一早在大門口等，06:30 去菜畦陪你', () => { const p = applyOverrides(d.people, d.days.farm.npc); const day = p[7].day;
-    expect(day[0]).toMatchObject({ at: '06:00', via: 'G', act: 'welcome' }); expect(day[1]).toMatchObject({ at: '06:30', via: 'beds', act: 'guide' }); expect(day[2].at).toBe('09:10'); });
+    expect(day[0]).toMatchObject({ at: '06:00', via: 'G', act: 'welcome' }); expect(day[1]).toMatchObject({ at: '06:30', via: 'beds', act: 'guide' });
+    expect(day[2]).toMatchObject({ at: '07:45', via: 'L1', act: 'stroll' }); expect(day[3]).toMatchObject({ at: '09:10', act: 'mentor' });
+    expect(day.slice(3)).toEqual(byId(d.people, 'laolin').day); });
+
+  it('採收以後老林去公園散步：07:45 到 09:10 之間，那個位置旁邊沒有別人', () => {
+    const stroll = d.days.farm.npc.find((o) => o.add && o.add.act === 'stroll');
+    expect(d.acts.stroll.does.text).toBe('在公園散步');
+    expect(Math.hypot(stroll.add.spot[0] - d.map.world.cx, stroll.add.spot[1] - d.map.world.cy)).toBeLessThan(d.map.world.ring);       // inside the ring road: the park
+    let checked = 0;
+    for (const p of d.people) {
+      if (p.id === 'laolin') continue;
+      let cur = null;
+      for (const e of p.day) if (e.at <= '07:45') cur = e;
+      const during = [cur, ...p.day.filter((e) => e.at > '07:45' && e.at < '09:10')].filter(Boolean);
+      for (const e of during) { checked++; expect(Math.hypot(e.spot[0] - stroll.add.spot[0], e.spot[1] - stroll.add.spot[1]), `${p.id} at ${e.at}`).toBeGreaterThan(60); }
+    }
+    expect(checked).toBeGreaterThan(15);
+  });
 
   it('add 插進去以後仍然照時間排；不改到原本的資料', () => {
     const people = structuredClone(d.people), overrides = [add('laolin', '20:00'), add('laolin', '12:30'), add('laolin', '05:00')];

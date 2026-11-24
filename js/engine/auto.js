@@ -67,7 +67,8 @@ export function createAuto(park) {
       }
       if (scene !== lastScene) {
         lastScene = scene; auto.target = null;
-        wait = AUTO.sceneOpen * auto.k;
+        const line = lineOf(scene);                // a close-up that opens on a line waits until it can be read
+        wait = Math.max(AUTO.sceneOpen, line === null ? 0 : lineSeconds(line)) * auto.k;
         return;
       }
       if (scene.done) {

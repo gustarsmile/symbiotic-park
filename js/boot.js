@@ -1,5 +1,5 @@
-// Starts the page: loads the data, builds the park, and runs the frame loop. For now the page opens straight into watching the park;
-// a role is started from the console (window.__park.park.beginRole) until the welcome and the role list come.
+// Starts the page: loads the data, builds the park, and runs the frame loop. The first time on a device the welcome
+// opens; after that the page opens on the role list. Behind both, the park keeps moving.
 import { loadData } from './data.js';
 import { createPark } from './engine/park.js';
 import { createAuto, pace } from './engine/auto.js';
@@ -10,6 +10,8 @@ import { createMapView, roleHooks } from './ui/mapView.js';
 import { createHud } from './ui/hud.js';
 import { createSceneView } from './ui/sceneView.js';
 import { showEnd, hideEnd } from './ui/endView.js';
+import { createIntro } from './ui/introView.js';
+import { createStart } from './ui/startView.js';
 import { agentAt, labelAt } from './ui/hit.js';
 import { frameSeconds } from './ui/loop.js';
 import { $ } from './ui/dom.js';
@@ -76,32 +78,48 @@ function bindInput(canvas, park, view, hud) {
 // every step that can throw has run, so a failure here leaves nothing behind.
 function build(data, win, storage) {
   const record = loadRecord(storage);
-  const park = createPark(data);
+  const park = createPark(data);                  // it starts in 'menu': the people go about their day behind the welcome and the list
   const auto = createAuto(park);
   const painted = paintMap(data.map, createRng(PAINT_SEED), (win.devicePixelRatio || 1) >= 1.5 ? 2 : 1.5);
   const canvas = $('map');
   const reduceMotion = () => !!win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   const view = createMapView(canvas, park, painted, data.ui, { win, reduceMotion, ...roleHooks(park, data.ui) });
-  const hud = createHud(park, auto, data, record, { onMenu() { /* the role list comes with the welcome */ } });
-  const goWatch = () => { hideEnd(); park.beginWatch(); $('hud').hidden = false; };
+
+  // The welcome and the role list. Closing the welcome marks it seen; a role button marks the role tried. Both are saved
+  // here; a browser that will not save still plays, it only forgets.
+  const intro = createIntro(data, record, { onClose() { saveRecord(storage, record); start.show(); } });
+  const start = createStart(data, record, auto, {
+    onRole(id) { saveRecord(storage, record); beginRole(id); },
+    onWatch: beginWatch,
+    onAbout() { start.hide(); intro.open(); },
+  });
+  const hud = createHud(park, auto, data, record, { onMenu: toMenu });
   // The day is over: a day finished by hand is counted and saved (auto mode's is not), then the end card.
   const sheets = createSceneView(park, auto, data, {
     onEnd() {
       const role = park.state.role;
       credit(record, role, auto.on); saveRecord(storage, record);
       $('hud').hidden = true;
-      showEnd(park.day, data, {
-        onWatch: goWatch,
-        onAgain() { hideEnd(); park.beginRole(role); $('hud').hidden = false; },
-        onMenu: goWatch,                              // until the role list comes, the way out of the end card is the park itself
-      });
+      showEnd(park.day, data, { onWatch: beginWatch, onAgain() { beginRole(role); }, onMenu: toMenu });
     },
   });
-  park.beginWatch();
-  view.resize();
 
-  for (const id of ['start', 'intro', 'end']) $(id).hidden = true;
-  $('hud').hidden = false;
+  // Every way into the park and back out goes through beginWatch, beginRole or toMenu, so nothing of the last day is left
+  // on screen: the end card, the list, an open person's card, a close-up. The engine starts each day afresh (a new run:
+  // no close-up, no fast-forward, auto mode starts its steps over); auto mode itself stays as the visitor set it.
+  // The cards are brought up to date at once rather than on the next frame, which a background tab never draws.
+  function look(x, y) { view.cam.x = x; view.cam.y = y; view.cam.free = 0; }      // the camera starts where the day starts
+  function enter() { hideEnd(); start.hide(); hud.hideInfo(); sheets.update(); hud.update(); $('hud').hidden = false; }
+  function beginWatch() { park.beginWatch(); look(data.map.world.cx, data.map.world.cy); enter(); }
+  function beginRole(id) { park.beginRole(id); look(park.player.x, park.player.y); enter(); }
+  function toMenu() {
+    park.toMenu(); hud.hideInfo(); sheets.update(); $('hud').hidden = true;
+    start.show(); hideEnd();                      // the list first: it moves the focus off the end card's button before that card is emptied
+  }
+
+  view.resize();
+  $('end').hidden = true; $('hud').hidden = true;
+  if (record.intro) start.show(); else intro.open();
   win.addEventListener('resize', view.resize);
   bindInput(canvas, park, view, hud);
 

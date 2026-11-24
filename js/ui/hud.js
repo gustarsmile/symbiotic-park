@@ -1,19 +1,37 @@
 // The cards laid over the map: the clock, the card at the bottom, and the explanation of a person or a signboard.
-// Watching has the card that opens the role list; playing a role has the job card (which job, take me there, start).
-// The auto buttons plug in at the marked place.
+// Watching has the card that opens the role list; playing a role has the job card (which job, take me there, start),
+// and at the top right the auto-mode button, its speed button and the way back to the role list.
 import { $, setText } from './dom.js';
 import { portrait } from './character.js';
 import { clockParts } from '../engine/time.js';
 import { fill } from '../engine/text.js';
 
 // hooks: { onMenu() } opens the role list: the card's button while watching, and the menu button while playing a role.
+// auto: the one auto mode, shared with the switch on the role list.
 export function createHud(park, auto, data, record, hooks = {}) {
-  void auto; void record;                         // the auto buttons and the played marks belong to the role mode
+  void record;                                    // the record is the role list's to show, not the hud's
   const ui = data.ui;
+  const autoBtn = $('auto-btn'), speedBtn = $('speed-btn');
 
-  // The auto and speed buttons stay hidden until the auto mode brings them.
+  // The top-right buttons appear only while playing a role.
   for (const id of ['menu-btn', 'auto-btn', 'speed-btn']) $(id).hidden = true;
   setText($('who-close'), ui.info.close);
+  speedBtn.title = ui.auto.speedTitle;
+
+  // Auto mode on or off, and how fast it goes. The speed button is there only while auto mode is on: 1x, or 1.5x
+  // (the words go by one and a half times faster, the walking and the waiting twice; see pace in engine/auto.js).
+  function showAuto() {
+    const role = park.state.mode === 'role';
+    autoBtn.hidden = !role; speedBtn.hidden = !role || !auto.on;
+    if (!role) return;
+    setText(autoBtn, auto.on ? ui.auto.on : ui.auto.off);
+    autoBtn.classList.toggle('on', auto.on); autoBtn.setAttribute('aria-pressed', auto.on ? 'true' : 'false');
+    setText(speedBtn, fill(ui.auto.speed, { n: auto.speed }));
+    speedBtn.classList.toggle('on', auto.speed !== 1); speedBtn.setAttribute('aria-label', fill(ui.auto.speedLabel, { n: auto.speed }));
+  }
+  // Assigned, not added: a second boot after a failed one must not leave two handlers that toggle twice.
+  autoBtn.onclick = () => { auto.set(!auto.on); showAuto(); $('map').focus(); };
+  speedBtn.onclick = () => { auto.setSpeed(auto.speed === 1 ? 1.5 : 1); showAuto(); $('map').focus(); };
 
   function hideInfo() { $('who').hidden = true; }
 
@@ -52,12 +70,13 @@ export function createHud(park, auto, data, record, hooks = {}) {
     setText($('clock-t'), ui.period[p.period] + ' ' + p.h12 + ':' + String(p.mm).padStart(2, '0'));
     $('clock').classList.toggle('ff', !!st.ff);
     $('menu-btn').hidden = st.mode !== 'role';
+    showAuto();
     if (st.mode === 'watch') {
       $('task').hidden = false; setText($('clock-s'), ui.watch.clock); setText($('task-step'), ui.watch.step); setText($('task-title'), ui.watch.title); setText($('task-note'), ui.watch.note);
       setText($('task-go'), ui.watch.go); $('task-go').disabled = false; $('task-go').hidden = false;
       return;
     }
-    // role mode: the job card. (The auto buttons and the speed button are filled in here by the next task.)
+    // role mode: the job card
     setText($('menu-btn'), ui.menu);
     const day = park.day, t = park.task;
     if (st.scene) { $('task').hidden = true; if (!$('who').hidden) { park.release(); hideInfo(); } return; }       // the close-up has the floor

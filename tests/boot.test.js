@@ -27,6 +27,13 @@ const makeWin = (over = {}) => ({
 // Runs the queued animation frame callbacks once, `ms` later than the last one.
 const frame = (ms = 16) => { now += ms; const cbs = queue.splice(0); cbs.forEach((cb) => cb(now)); };
 const run = async (opts = {}) => { const win = makeWin(opts.win); const r = await boot({ fetchFn: diskFetch, win, storage: memory(), ...opts, win }); stops.push(r.stop); return { ...r, win }; };
+// Opens the page the way a first visitor would and goes to watching the park: past the welcome, then the list's watch button.
+const watching = async (opts) => {
+  const r = await run(opts);
+  document.getElementById('in-back').click(); document.getElementById('watch-btn').click();
+  expect(r.park.state.mode).toBe('watch');
+  return r;
+};
 
 beforeEach(() => {
   mountPage(); restore = installFakeCanvas(); queue = []; now = 1000; stops = []; hidden = false;
@@ -55,8 +62,8 @@ describe('boot', () => {
     document.getElementById('load-retry').click();
     await vi.waitFor(() => expect(err.hidden).toBe(true));
     expect(asked).toBeGreaterThan(askedBefore);
-    expect(win.__park.park.state.mode).toBe('watch');
-    expect(document.getElementById('hud').hidden).toBe(false);
+    expect(win.__park.park.state.mode).toBe('menu');
+    expect(document.getElementById('intro').hidden).toBe(false);
     stops.push(win.__park.stop);
   });
 
@@ -130,11 +137,13 @@ describe('boot', () => {
     expect(urls.every((u) => /\/js\/data\/[\w/]+\.json$/.test(u))).toBe(true);
   });
 
-  it('成功：直接進看園區，顯示控制列、收起開始畫面，並把 __park 交出來', async () => {
+  it('成功：第一次打開出現歡迎框，園區在背後（選單模式），控制列收著，並把 __park 交出來', async () => {
     const { park, auto, data, record, win } = await run();
-    expect(park.state.mode).toBe('watch');
-    expect(document.getElementById('hud').hidden).toBe(false);
+    expect(park.state.mode).toBe('menu');
+    expect(document.getElementById('intro').hidden).toBe(false);
+    expect(document.getElementById('hud').hidden).toBe(true);
     expect(document.getElementById('start').hidden).toBe(true);
+    expect(document.getElementById('end').hidden).toBe(true);
     expect(document.getElementById('load-error').hidden).toBe(true);
     expect(win.__park.park).toBe(park); expect(win.__park.auto).toBe(auto);
     expect(data.ui.watch.title).toBeTruthy(); expect(record.tried).toEqual({});
@@ -145,7 +154,7 @@ describe('boot', () => {
   });
 
   it('看園區的任務卡與時鐘用的是資料裡的字', async () => {
-    const { data } = await run();
+    const { data } = await watching();
     frame();
     const ui = data.ui;
     expect(document.getElementById('clock-t').textContent).toMatch(new RegExp('^' + ui.period.dawn + ' \\d{1,2}:\\d\\d$'));
@@ -183,7 +192,7 @@ describe('boot', () => {
   });
 
   it('每一格先用 pace 再 tick：自動模式的快轉只在角色模式（看園區照常 1 倍）', async () => {
-    const { park, auto } = await run();
+    const { park, auto } = await watching();
     frame(); frame(16);
     auto.set(true); auto.setSpeed(1.5);
     const c0 = park.state.clock;
@@ -207,7 +216,7 @@ describe('boot', () => {
   };
 
   it('點一個人：他停下、轉向你，說明卡有名字・身分、在做什麼、為什麼；點空白處收起來、他繼續走', async () => {
-    const r = await run();
+    const r = await watching();
     const { park, data, view } = r;
     const a = someoneOut(r);
     frame(); frame(16);
@@ -233,7 +242,7 @@ describe('boot', () => {
   });
 
   it('再點同一個人：收起說明、他繼續走', async () => {
-    const r = await run();
+    const r = await watching();
     const a = someoneOut(r); frame(); frame(16);
     const [sx, sy] = screenOf(r.view, a);
     tap(sx, sy); expect(r.park.state.sel).toBe(a);
@@ -243,7 +252,7 @@ describe('boot', () => {
   });
 
   it('點招牌：出說明（名字加地方的介紹），沒有第三行', async () => {
-    const r = await run();
+    const r = await watching();
     frame(); frame(16);
     const rect = r.view.labelRects[0];
     expect(rect).toBeTruthy();
@@ -257,7 +266,7 @@ describe('boot', () => {
   });
 
   it('拖一下地圖不算點：不會出說明卡，鏡頭跟著手動、3 秒內不自動跟', async () => {
-    const r = await run();
+    const r = await watching();
     frame(); frame(16);
     const c = canvasOf(), x0 = r.view.cam.x;
     const mk = (type, x) => new window.PointerEvent(type, { clientX: x, clientY: 300, pointerId: 3, pointerType: 'touch', bubbles: true });
@@ -268,7 +277,7 @@ describe('boot', () => {
   });
 
   it('關閉鈕：收起說明、放開那個人', async () => {
-    const r = await run();
+    const r = await watching();
     const a = someoneOut(r); frame(); frame(16);
     tap(...screenOf(r.view, a));
     document.getElementById('who-close').click();
@@ -278,7 +287,7 @@ describe('boot', () => {
   });
 
   it('滑鼠移開被點的人 90 像素以上，他才繼續走', async () => {
-    const r = await run();
+    const r = await watching();
     const a = someoneOut(r); frame(); frame(16);
     const [sx, sy] = screenOf(r.view, a);
     tap(sx, sy);
@@ -288,7 +297,7 @@ describe('boot', () => {
   });
 
   it('滑鼠移到人身上游標變手指，移開變回來', async () => {
-    const r = await run();
+    const r = await watching();
     const a = someoneOut(r); frame(); frame(16);
     const [sx, sy] = screenOf(r.view, a);
     const move = (x, y) => canvasOf().dispatchEvent(new window.PointerEvent('pointermove', { clientX: x, clientY: y, pointerId: 1, pointerType: 'mouse', bubbles: true }));
@@ -296,9 +305,11 @@ describe('boot', () => {
     move(1, 1); expect(canvasOf().style.cursor).toBe('');
   });
 
-  it('選一個角色鈕在這個 Task 還沒有地方可去：呼叫 onMenu（暫時什麼都不做），不會壞掉', async () => {
-    await run();
-    expect(() => document.getElementById('task-go').click()).not.toThrow();
-    expect(document.getElementById('hud').hidden).toBe(false);
+  it('看園區時卡片上的「選一個角色」：回到角色清單，控制列收起來', async () => {
+    const { park } = await watching();
+    document.getElementById('task-go').click();
+    expect(park.state.mode).toBe('menu');
+    expect(document.getElementById('start').hidden).toBe(false);
+    expect(document.getElementById('hud').hidden).toBe(true);
   });
 });

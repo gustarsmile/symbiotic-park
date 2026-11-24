@@ -120,7 +120,7 @@ describe('hud: 角色模式的任務卡', () => {
     hud.update(); expect($('menu-btn').hidden).toBe(true);
     park.beginRole('work'); hud.update();
     expect($('menu-btn').hidden).toBe(false); expect($('menu-btn').textContent).toBe(data.ui.menu);
-    expect($('auto-btn').hidden).toBe(true); expect($('speed-btn').hidden).toBe(true);
+    expect($('auto-btn').hidden).toBe(false); expect($('speed-btn').hidden).toBe(true);       // auto mode is off: no speed button
     $('menu-btn').click(); expect(onMenu).toHaveBeenCalledTimes(1);
     park.beginWatch(); hud.update(); expect($('menu-btn').hidden).toBe(true);
   });

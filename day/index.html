@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap">
 <link rel="stylesheet" href="../css/park.css">
+<noscript><style>#loading > .lead{display:none}</style></noscript>
 </head>
 <body>
 <div id="stage">
@@ -55,7 +56,12 @@
 
   <div id="intro" class="overlay" hidden></div>
 
-  <div id="start" class="overlay"></div>
+  <div id="start" class="overlay">
+    <div class="panel" id="loading">
+      <p class="lead">園區載入中……</p>
+      <noscript><p class="lead">這個網站要開啟 JavaScript 才看得到。請換一個瀏覽器，或把 JavaScript 打開。</p></noscript>
+    </div>
+  </div>
 
   <div id="end" class="overlay" hidden></div>
 
@@ -67,5 +73,15 @@
   </div>
 </div>
 <script type="module" src="../js/main.js"></script>
+<script>
+  // If main.js or any file it imports cannot be loaded, no module code runs at all, so boot() never gets to show the
+  // retry panel: these lines show it in place of the loading line, and its button reloads the page. Once the modules
+  // have loaded this event does not fire, and boot() handles every failure itself.
+  document.querySelector('script[type="module"]').addEventListener('error', function () {
+    document.getElementById('start').hidden = true;
+    document.getElementById('load-error').hidden = false;
+    document.getElementById('load-retry').onclick = function () { location.reload(); };
+  });
+</script>
 </body>
 </html>

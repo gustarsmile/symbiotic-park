@@ -142,17 +142,18 @@ function build(data, win, storage) {
   return { park, auto, data, record, view, hud, stop };
 }
 
-// Resolves with { park, auto, data, record, view, hud, stop }. If anything fails before the park is running it shows
-// the retry panel and rejects. While a retry is under way the button is disabled, so a double tap starts only one boot.
+// Resolves with { park, auto, data, record, view, hud, stop }. If anything fails before the park is running (the data
+// included, when it has not arrived in time) it shows the retry panel in place of the loading line and rejects. While a
+// retry is under way the button is disabled, so a double tap starts only one boot.
 export async function boot({ fetchFn = fetch, win = window, storage = safeStorage(win) } = {}) {
   const retry = $('load-retry');
   try {
-    const data = await loadData(DATA_BASE, fetchFn);
+    const data = await loadData(DATA_BASE, fetchFn, { timers: win });
     const result = build(data, win, storage);
     $('load-error').hidden = true; retry.disabled = false;
     return result;
   } catch (err) {
-    $('load-error').hidden = false; retry.disabled = false;
+    $('start').hidden = true; $('load-error').hidden = false; retry.disabled = false;
     retry.onclick = () => {
       if (retry.disabled) return;
       retry.disabled = true;

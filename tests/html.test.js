@@ -33,6 +33,35 @@ describe('html', () => {
   it('後面的程式要用到的元素都在', () => {
     for (const id of IDS) expect(day).toContain(`id="${id}"`);
   });
+
+  const LOADING = '園區載入中……';
+  const NO_JS = '這個網站要開啟 JavaScript 才看得到。請換一個瀏覽器，或把 JavaScript 打開。';
+  const openTag = (id) => new RegExp(`<div id="${id}"[^>]*>`).exec(day)[0];
+
+  it('程式還沒載好時看得到「園區載入中……」（在一個面板裡）；其他層一開始都收著', () => {
+    expect(openTag('start')).not.toMatch(/\bhidden\b/);
+    expect(day).toMatch(new RegExp(`<div id="start" class="overlay">\\s*<div class="panel" id="loading">\\s*<p class="lead">${LOADING}</p>`));
+    for (const id of ['hud', 'sheet', 'intro', 'end', 'load-error']) expect(openTag(id), id).toMatch(/\bhidden\b/);
+  });
+
+  it('沒開 JavaScript：兩個頁面都有一句說明；體驗頁把「載入中」那行藏起來', () => {
+    expect(day).toMatch(new RegExp(`<div class="panel" id="loading">\\s*<p class="lead">${LOADING}</p>\\s*<noscript><p class="lead">${NO_JS}</p></noscript>\\s*</div>`));
+    expect(day).toMatch(/<head>[\s\S]*<noscript><style>#loading > \.lead\{display:none\}<\/style><\/noscript>[\s\S]*<\/head>/);
+    expect(home).toContain(`<noscript><p>${NO_JS}</p></noscript>`);
+    expect(home).toMatch(/http-equiv="refresh" content="0; ?url=day\/"/);       // no script needed to get to day/
+    expect(home).not.toMatch(/<script/);
+  });
+
+  it('程式檔載不到時的備援：模組後面一小段一般的程式，掛在模組的 error 上、打開再試一次、按了重新載入；裡面沒有中文', () => {
+    const scripts = [...day.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].map((m) => ({ attrs: m[1], body: m[2] }));
+    expect(scripts.map((s) => s.attrs.trim())).toEqual(['type="module" src="../js/main.js"', '']);
+    const hook = scripts[1].body;
+    expect(hook).toContain(`querySelector('script[type="module"]')`);
+    expect(hook).toContain(`addEventListener('error'`);
+    expect(hook).toContain(`getElementById('load-error').hidden = false`);
+    expect(hook).toContain('location.reload()');
+    expect(hook).not.toMatch(/[　-〿一-鿿＀-￯]/);
+  });
   it('分享預覽圖是 1200×630 的 PNG；小圖示存在', () => {
     const b = readFileSync('assets/og.png');
     expect(b.readUInt32BE(16)).toBe(1200); expect(b.readUInt32BE(20)).toBe(630);

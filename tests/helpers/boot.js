@@ -27,6 +27,7 @@ export function pageRunner() {
     requestAnimationFrame: (cb) => { queue.push(cb); return queue.length; },
     cancelAnimationFrame() {},
     performance: { now: () => now },          // the page's clock in milliseconds: frame() and wait() move it on
+    setTimeout: () => 0, clearTimeout() {},   // the data's time limit never runs out here
   }, Object.getOwnPropertyDescriptors(over));
   return {
     // opts: { storage, win } — leave storage out to get a fresh memoryStorage; pass storage: undefined for a browser that has none

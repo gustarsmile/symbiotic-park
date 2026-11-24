@@ -106,6 +106,47 @@ describe('assemble 與 loadData', () => {
     const badJson = async (url) => (url.endsWith(missing) ? { ok: true, status: 200, json: async () => JSON.parse('{') } : ok('x/', url));
     await expect(loadData('x/', badJson)).rejects.toThrow();
   });
+
+  // Timers the test runs by hand: nothing waits for real.
+  const handTimers = () => {
+    const pending = new Map();
+    let next = 1;
+    return {
+      pending,
+      setTimeout(fn, ms) { const id = next++; pending.set(id, { fn, ms }); return id; },
+      clearTimeout(id) { pending.delete(id); },
+      fireAll() { const due = [...pending.values()]; pending.clear(); due.forEach((t) => t.fn()); },
+    };
+  };
+
+  it('20 秒還拿不到資料：中止請求並 reject（頁面才會出現再試一次）', async () => {
+    const timers = handTimers(), signals = [];
+    const stalled = (url, init) => { signals.push(init?.signal); return new Promise(() => {}); };      // a request that never answers
+    const p = loadData('x/', stalled, { timers });
+    expect([...timers.pending.values()].map((t) => t.ms)).toEqual([20000]);
+    let settled = false; p.catch(() => {}).finally(() => { settled = true; });
+    await Promise.resolve(); await Promise.resolve();
+    expect(settled).toBe(false);                                   // nothing happens before the time is up
+    timers.fireAll();
+    await expect(p).rejects.toThrow();
+    expect(signals).toHaveLength(DATA_FILES.length);
+    expect(signals.every((s) => s && s.aborted)).toBe(true);
+    // a body that never finishes arriving counts the same
+    const t2 = handTimers();
+    const p2 = loadData('x/', async () => ({ ok: true, status: 200, json: () => new Promise(() => {}) }), { timers: t2 });
+    await Promise.resolve();
+    t2.fireAll();
+    await expect(p2).rejects.toThrow();
+  });
+
+  it('資料到了（或先失敗了）：計時器收掉，不留在背後', async () => {
+    const timers = handTimers();
+    expect(await loadData('x/', async (url) => ok('x/', url), { timers })).toEqual(d);
+    expect(timers.pending.size).toBe(0);
+    const t2 = handTimers();
+    await expect(loadData('x/', async () => { throw new Error('offline'); }, { timers: t2 })).rejects.toThrow('offline');
+    expect(t2.pending.size).toBe(0);
+  });
 });
 
 describe('來源的輔助函式', () => {

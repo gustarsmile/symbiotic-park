@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { boot } from '../js/boot.js';
 import { mountPage } from './helpers/page.js';
 import { installFakeCanvas } from './helpers/canvas.js';
@@ -23,6 +25,7 @@ const makeWin = (over = {}) => ({
   requestAnimationFrame: (cb) => { queue.push(cb); return queue.length; },
   cancelAnimationFrame() {},
   performance: { now: () => now },
+  setTimeout: () => 0, clearTimeout() {},          // the data's time limit never runs out here unless a test says so
   ...over,
 });
 // Runs the queued animation frame callbacks once, `ms` later than the last one.
@@ -122,6 +125,73 @@ describe('boot', () => {
     // and a retry once drawing works again succeeds
     document.getElementById('load-retry').click();
     await vi.waitFor(() => expect(document.getElementById('load-error').hidden).toBe(true));
+    stops.push(win.__park.stop);
+  });
+
+  it('資料一直沒來：20 秒時放棄，出現再試一次，「載入中」那一行收起來', async () => {
+    let limit = null, giveUp = null;
+    const win = makeWin({ setTimeout: (fn, ms) => { giveUp = fn; limit = ms; return 7; }, clearTimeout() {} });
+    expect(document.getElementById('loading')).not.toBeNull(); expect(document.getElementById('start').hidden).toBe(false);
+    const p = boot({ fetchFn: () => new Promise(() => {}), win, storage: memory() });
+    let settled = false; p.catch(() => {}).finally(() => { settled = true; });
+    await Promise.resolve();
+    expect(limit).toBe(20000); expect(settled).toBe(false); expect(document.getElementById('load-error').hidden).toBe(true);
+    giveUp();
+    await expect(p).rejects.toThrow();
+    expect(document.getElementById('load-error').hidden).toBe(false);
+    expect(document.getElementById('load-retry').disabled).toBe(false);
+    expect(document.getElementById('start').hidden).toBe(true);
+    expect(queue).toHaveLength(0);
+  });
+
+  it('載入成功：歡迎框或角色清單一出來，「載入中」那一行就不見了', async () => {
+    expect(document.getElementById('loading')).not.toBeNull();
+    await run();
+    expect(document.getElementById('loading')).toBeNull(); expect(document.getElementById('start').textContent).not.toContain('載入中');
+    expect(document.getElementById('intro').hidden).toBe(false);
+  });
+
+  // The page's own few lines for when the program cannot be loaded at all (no module code runs then).
+  const page = readFileSync(resolve(process.cwd(), 'day/index.html'), 'utf8');
+  const pageBody = /<body[^>]*>([\s\S]*)<\/body>/.exec(page)[1];
+  const hook = [...pageBody.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  // The body as it is, scripts left out, then the module's tag put back as an inert copy (happy-dom would try to load it):
+  // the tag the page's lines look for, at the same place.
+  const mountWithHook = () => {
+    const tag = /<script type="module"[^>]*><\/script>/.exec(pageBody)[0];
+    document.body.innerHTML = pageBody.replace(tag, '<i id="module-here"></i>').replace(/<script>[\s\S]*?<\/script>/g, '');
+    const mod = document.createElement('script');
+    mod.type = 'text/plain'; mod.setAttribute('src', /src="([^"]+)"/.exec(tag)[1]);
+    document.getElementById('module-here').replaceWith(mod);
+    mod.setAttribute('type', 'module');
+    const reload = vi.fn();
+    new Function('document', 'location', hook[0])(document, { reload });
+    return reload;
+  };
+
+  it('程式檔（main.js 或它引用的檔）載不到：頁面上那一小段把「載入中」換成再試一次，按了重新載入頁面', () => {
+    expect(hook).toHaveLength(1);
+    const reload = mountWithHook();
+    const err = document.getElementById('load-error');
+    expect(err.hidden).toBe(true); expect(document.getElementById('start').hidden).toBe(false);
+    expect(document.getElementById('load-retry').onclick).toBeNull();            // nothing is touched until the error comes
+    document.querySelector('script[type="module"]').dispatchEvent(new Event('error'));
+    expect(err.hidden).toBe(false); expect(document.getElementById('start').hidden).toBe(true);
+    document.getElementById('load-retry').click();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('程式載好了以後由 boot 自己處理：那一小段不插手（再試一次是重新載入資料，不是重新整理頁面）', async () => {
+    const reload = mountWithHook();
+    let online = false;
+    const fetchFn = (url) => (online ? diskFetch(url) : Promise.reject(new Error('offline')));
+    const win = makeWin();
+    await expect(boot({ fetchFn, win, storage: memory() })).rejects.toThrow();
+    expect(document.getElementById('load-error').hidden).toBe(false);
+    online = true;
+    document.getElementById('load-retry').click();
+    await vi.waitFor(() => expect(document.getElementById('load-error').hidden).toBe(true));
+    expect(reload).not.toHaveBeenCalled();
     stops.push(win.__park.stop);
   });
 

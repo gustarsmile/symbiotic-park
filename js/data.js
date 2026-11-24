@@ -28,13 +28,27 @@ export function assemble(parts) {
   };
 }
 
-// Fetches every file at once; rejects as soon as any one of them fails.
-export async function loadData(base, fetchFn = fetch) {
+// How long the data may take to arrive before the page gives up and offers to try again (milliseconds).
+export const LOAD_LIMIT_MS = 20000;
+
+// Fetches every file at once; rejects as soon as any one of them fails, or if they have not all arrived within `limit`
+// (a request that stalls would otherwise leave the page loading for ever); the requests still out are then aborted.
+// timers: { setTimeout, clearTimeout } — the page's window, or the test's own; the timer is cleared however it ends.
+export async function loadData(base, fetchFn = fetch, { limit = LOAD_LIMIT_MS, timers = globalThis } = {}) {
   const root = base.endsWith('/') ? base : `${base}/`;
-  const bodies = await Promise.all(DATA_FILES.map(async (file) => {
-    const res = await fetchFn(root + file);
-    if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
-    return res.json();
-  }));
-  return assemble(Object.fromEntries(DATA_FILES.map((file, i) => [file, bodies[i]])));
+  const stop = typeof AbortController === 'function' ? new AbortController() : null;
+  let timer;
+  const late = new Promise((_, reject) => {
+    timer = timers.setTimeout(() => { stop?.abort(); reject(new Error(`data: not all here after ${limit} ms`)); }, limit);
+  });
+  try {
+    const bodies = await Promise.race([late, Promise.all(DATA_FILES.map(async (file) => {
+      const res = await fetchFn(root + file, stop ? { signal: stop.signal } : undefined);
+      if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
+      return res.json();
+    }))]);
+    return assemble(Object.fromEntries(DATA_FILES.map((file, i) => [file, bodies[i]])));
+  } finally {
+    timers.clearTimeout(timer);
+  }
 }

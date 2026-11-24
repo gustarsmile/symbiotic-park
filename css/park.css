@@ -202,4 +202,4 @@ button.it:active{transform:scale(.94)}
 }
 @media (prefers-reduced-motion:reduce){.it,.fam,.track i,.bar.run i,.auto-row .sw,.auto-row .sw::after{transition:none}}
 
-#load-error .panel{text-align:center}
+#load-error .panel,#loading{text-align:center}

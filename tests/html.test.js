@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { SITE_URL, PARK_PATH } from '../js/config.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -68,5 +68,13 @@ describe('html', () => {
     expect(existsSync('assets/favicon.png')).toBe(true);
     expect(day).toContain('rel="icon" type="image/png" href="../assets/favicon.png"');
     expect(home).toContain('href="assets/favicon.png"');
+  });
+
+  it('放上網的設定：根目錄有空的 .nojekyll；tools/ 的開發用頁面不給搜尋引擎收，兩個正式頁面不加', () => {
+    expect(existsSync('.nojekyll')).toBe(true); expect(readFileSync('.nojekyll', 'utf8')).toBe('');
+    const tools = readdirSync('tools').filter((f) => f.endsWith('.html'));
+    expect(tools.sort()).toEqual(['gallery.html', 'og.html']);
+    for (const f of tools) expect(read(`tools/${f}`), f).toMatch(/<head>[\s\S]*<meta name="robots" content="noindex">[\s\S]*<\/head>/);
+    for (const page of [home, day]) expect(page).not.toMatch(/noindex/);
   });
 });

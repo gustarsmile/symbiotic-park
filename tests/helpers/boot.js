@@ -26,6 +26,7 @@ export function pageRunner() {
     matchMedia: () => ({ matches: false }),
     requestAnimationFrame: (cb) => { queue.push(cb); return queue.length; },
     cancelAnimationFrame() {},
+    performance: { now: () => now },          // the page's clock in milliseconds: frame() and wait() move it on
   }, Object.getOwnPropertyDescriptors(over));
   return {
     // opts: { storage, win } — leave storage out to get a fresh memoryStorage; pass storage: undefined for a browser that has none
@@ -38,6 +39,8 @@ export function pageRunner() {
     },
     // Runs the queued frame callbacks once, `ms` after the last one.
     frame(ms = 16) { now += ms; queue.splice(0).forEach((cb) => cb(now)); },
+    // Lets `ms` pass without a frame: the pause between two presses of a hand that is not double-tapping.
+    wait(ms = 400) { now += ms; },
     stop() { stops.splice(0).forEach((s) => s()); },
   };
 }

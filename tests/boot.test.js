@@ -22,15 +22,18 @@ const makeWin = (over = {}) => ({
   matchMedia: () => ({ matches: false }),
   requestAnimationFrame: (cb) => { queue.push(cb); return queue.length; },
   cancelAnimationFrame() {},
+  performance: { now: () => now },
   ...over,
 });
 // Runs the queued animation frame callbacks once, `ms` later than the last one.
 const frame = (ms = 16) => { now += ms; const cbs = queue.splice(0); cbs.forEach((cb) => cb(now)); };
+// Lets `ms` pass without a frame (the welcome and the list ignore presses just after they appear).
+const wait = (ms = 400) => { now += ms; };
 const run = async (opts = {}) => { const win = makeWin(opts.win); const r = await boot({ fetchFn: diskFetch, win, storage: memory(), ...opts, win }); stops.push(r.stop); return { ...r, win }; };
 // Opens the page the way a first visitor would and goes to watching the park: past the welcome, then the list's watch button.
 const watching = async (opts) => {
   const r = await run(opts);
-  document.getElementById('in-back').click(); document.getElementById('watch-btn').click();
+  wait(); document.getElementById('in-back').click(); wait(); document.getElementById('watch-btn').click();
   expect(r.park.state.mode).toBe('watch');
   return r;
 };

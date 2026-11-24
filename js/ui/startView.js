@@ -1,15 +1,16 @@
 // The role list: the seven roles to take over for a day, the auto-mode switch, a way to just watch the park, and the
 // link back to the welcome. A role the visitor has picked before is green; a role finished by hand shows how many times.
 // The role the data suggests to begin with carries a small tag until it has been picked.
-import { $, el, setText } from './dom.js';
+import { $, el, setText, settleClicks } from './dom.js';
 import { portrait } from './character.js';
 import { fill } from '../engine/text.js';
 import { ROLE_IDS, markTried } from '../engine/store.js';
 
 // record: the visitor's record (a role button marks its role as tried; the caller saves it in onRole).
 // auto: the one auto mode, shared with the button at the top right.
-export function createStart(data, record, auto, { onRole, onWatch, onAbout } = {}) {
-  const ui = data.ui.start, root = $('start');
+// now(): milliseconds, for ignoring presses just after the list appears (see settleClicks).
+export function createStart(data, record, auto, { onRole, onWatch, onAbout, now = () => performance.now() } = {}) {
+  const ui = data.ui.start, root = $('start'), settle = settleClicks(root, now);
   const panel = el('div', 'panel');
   const about = el('button', 'more', ui.about); about.id = 'about-btn';
 
@@ -18,7 +19,8 @@ export function createStart(data, record, auto, { onRole, onWatch, onAbout } = {
   words.append(el('b', '', ui.autoTitle), el('small', '', ui.autoNote));
   switchRow.append(box, sw, words);
 
-  // A click that lands after the list has gone (a double press) is ignored, so a role starts once.
+  // A click that lands after the list has gone (a double press) is ignored, so a role starts once; so is one that lands
+  // just after it has appeared (settle, in show()), so the second tap on 直接開始 or 換一個角色 does not pick a role.
   const whileShown = (fn) => () => { if (!root.hidden) fn(); };
   const roles = el('div', 'roles'), marks = new Map(), first = ui.first ?? null;
   roles.id = 'roles';
@@ -62,7 +64,7 @@ export function createStart(data, record, auto, { onRole, onWatch, onAbout } = {
   function show() {
     const had = document.activeElement;
     refresh();
-    root.hidden = false;
+    root.hidden = false; settle();
     if (had && had !== document.body && !root.contains(had)) marks.get(ROLE_IDS[0]).b.focus();
   }
 

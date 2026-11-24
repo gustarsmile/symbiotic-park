@@ -66,7 +66,7 @@ describe('自動模式接到真的頁面', () => {
 
   it('清單上的開關和右上角的鈕是同一個狀態', async () => {
     const r = await page.open({ storage: seen() });
-    $('auto-box').click();
+    page.wait(); $('auto-box').click();
     expect(r.auto.on).toBe(true);
     $('role-work').click(); page.frame();
     expect($('auto-btn').hidden).toBe(false); expect($('auto-btn').textContent).toBe(ui.on); expect($('speed-btn').hidden).toBe(false);
@@ -74,14 +74,14 @@ describe('自動模式接到真的頁面', () => {
     expect(r.auto.on).toBe(false);
     $('menu-btn').click();
     expect($('auto-box').checked).toBe(false);
-    $('auto-box').click();
+    page.wait(); $('auto-box').click();
     $('role-work').click(); page.frame();
     expect($('auto-btn').textContent).toBe(ui.on); expect($('auto-btn').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('1.5× 的意思：有字要讀的部分 1.5 倍，走路與時鐘 2 倍；1× 時都照常', async () => {
     const r = await page.open({ storage: seen() });
-    $('auto-box').click(); $('role-farm').click(); page.frame(); page.frame();
+    page.wait(); $('auto-box').click(); $('role-farm').click(); page.frame(); page.frame();
     const st = r.park.state, reads = [], step = r.auto.step;
     r.auto.step = (dt) => { reads.push(dt); step(dt); };              // what auto mode is handed each frame for its reading pauses
     const frameOnce = () => { const c = st.clock; page.frame(16); return { clock: st.clock - c, read: reads.at(-1) }; };
@@ -95,7 +95,7 @@ describe('自動模式接到真的頁面', () => {
 
   it('看園區時沒有自動與速度鈕，就算自動模式開著', async () => {
     const r = await page.open({ storage: seen() });
-    $('auto-box').click(); $('watch-btn').click(); page.frame();
+    page.wait(); $('auto-box').click(); $('watch-btn').click(); page.frame();
     expect(r.auto.on).toBe(true);
     expect($('auto-btn').hidden).toBe(true); expect($('speed-btn').hidden).toBe(true); expect($('menu-btn').hidden).toBe(true);
   });

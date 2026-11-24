@@ -142,7 +142,7 @@ describe('hud: 做完一天的紀錄（接到真的頁面）', () => {
   const memory = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) }; };
   const frame = (ms = 16) => { now += ms; queue.splice(0).forEach((cb) => cb(now)); };
   const start = async () => {
-    const win = { document, devicePixelRatio: 1, innerWidth: 390, innerHeight: 844, addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false }), requestAnimationFrame: (cb) => { queue.push(cb); return queue.length; }, cancelAnimationFrame() {} };
+    const win = { document, devicePixelRatio: 1, innerWidth: 390, innerHeight: 844, addEventListener() {}, removeEventListener() {}, matchMedia: () => ({ matches: false }), requestAnimationFrame: (cb) => { queue.push(cb); return queue.length; }, cancelAnimationFrame() {}, performance: { now: () => now } };
     store = memory();
     const r = await boot({ fetchFn: diskFetch, win, storage: store }); stops.push(r.stop); return r;
   };

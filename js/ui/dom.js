@@ -19,6 +19,21 @@ export function el(tag, className, text) {
   return e;
 }
 
+// How long a screen that has just appeared ignores presses (milliseconds).
+export const SETTLE_MS = 350;
+
+// A press that lands on a screen in its first moments is the second half of a double tap meant for the screen before it.
+// Returns arm(): from then on, for `ms`, every click inside root (a tap, or Enter or the space bar on a focused control,
+// which the browser sends as a click) is stopped before it reaches the control, and does nothing (a checkbox stays as it
+// was). now() gives the time in milliseconds: performance.now() on the page, a clock of the test's own in tests.
+export function settleClicks(root, now, ms = SETTLE_MS) {
+  let at = -Infinity;
+  root.addEventListener('click', (e) => {
+    if (now() - at < ms) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  return () => { at = now(); };
+}
+
 // Writes only when the text is different, so a node that is being watched or selected is not disturbed.
 export function setText(node, text) {
   if (node._text === String(text)) return;

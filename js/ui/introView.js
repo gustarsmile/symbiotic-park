@@ -1,7 +1,7 @@
 // The welcome: three pages on one card. The first says what the park hopes to be; the other two, how it runs and how to
 // look around, are there for whoever wants them. It opens by itself the first time on a device (the caller decides that);
 // afterwards it opens from the link on the role list. All the words come from data.intro.
-import { $, el } from './dom.js';
+import { $, el, settleClicks } from './dom.js';
 import { portrait } from './character.js';
 import { fill } from '../engine/text.js';
 
@@ -61,8 +61,9 @@ function buildPage(p, face) {
 }
 
 // record: the visitor's record; closing marks the welcome as seen (the caller saves it in onClose).
-export function createIntro(data, record, { onClose } = {}) {
-  const intro = data.intro, B = intro.buttons, root = $('intro');
+// now(): milliseconds, for ignoring presses just after the card opens or turns a page (see settleClicks).
+export function createIntro(data, record, { onClose, now = () => performance.now() } = {}) {
+  const intro = data.intro, B = intro.buttons, root = $('intro'), settle = settleClicks(root, now);
   const looks = new Map(data.people.map((p) => [p.id, p.look]));
   const face = (id, px) => {
     if (!looks.has(id)) throw new Error('the welcome names an unknown person: ' + id);
@@ -86,7 +87,9 @@ export function createIntro(data, record, { onClose } = {}) {
   let at = 0;
 
   // The pages share one grid cell, so the card keeps the height of the tallest; the others are hidden and cannot be reached.
+  // The buttons change under the finger (園區怎麼運作 becomes 下一頁), so a new page ignores presses for a moment.
   function page(i) {
+    settle();
     at = Math.max(0, Math.min(last, i));
     pages.forEach((p, k) => { p.setAttribute('aria-hidden', k === at ? 'false' : 'true'); p.toggleAttribute('inert', k !== at); });
     step.textContent = fill(intro.step, { s: intro.pages[at].name, i: at + 1, t: pages.length });

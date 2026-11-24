@@ -86,9 +86,12 @@ function build(data, win, storage) {
   const view = createMapView(canvas, park, painted, data.ui, { win, reduceMotion, ...roleHooks(park, data.ui) });
 
   // The welcome and the role list. Closing the welcome marks it seen; a role button marks the role tried. Both are saved
-  // here; a browser that will not save still plays, it only forgets.
-  const intro = createIntro(data, record, { onClose() { saveRecord(storage, record); start.show(); } });
+  // here; a browser that will not save still plays, it only forgets. Both ignore presses for a moment after they appear,
+  // timed by the page's clock.
+  const now = () => win.performance.now();
+  const intro = createIntro(data, record, { now, onClose() { saveRecord(storage, record); start.show(); } });
   const start = createStart(data, record, auto, {
+    now,
     onRole(id) { saveRecord(storage, record); beginRole(id); },
     onWatch: beginWatch,
     onAbout() { start.hide(); intro.open(); },

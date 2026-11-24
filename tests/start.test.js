@@ -17,12 +17,14 @@ const $ = (id) => document.getElementById(id);
 const btn = (id) => $('role-' + id);
 
 describe('角色清單', () => {
-  let restore, record, auto, start, hooks;
+  let restore, record, auto, start, hooks, t;
+  const later = (ms = 400) => { t += ms; };          // a moment passes (the list ignores presses just after it appears)
   beforeEach(() => {
     mountPage(); restore = installFakeCanvas();
     record = emptyRecord(); auto = createAuto(createPark(d));
     hooks = { onRole: vi.fn(), onWatch: vi.fn(), onAbout: vi.fn() };
-    start = createStart(d, record, auto, hooks);
+    t = 1000;
+    start = createStart(d, record, auto, { ...hooks, now: () => t });
     start.show();
   });
   afterEach(() => restore());
@@ -89,7 +91,7 @@ describe('角色清單', () => {
 
   it('選過農夫以後：標籤不見，顯示玩過', () => {
     expect(visible(btn('farm'))).toBe('一日農夫|建議先從這裡開始');
-    btn('farm').click();                                       // picking it marks it tried
+    later(); btn('farm').click();                              // picking it marks it tried
     expect(record.tried.farm).toBe(true);
     start.show();
     expect(tag('farm').hidden).toBe(true);
@@ -113,7 +115,7 @@ describe('角色清單', () => {
 
   it('按角色：先記下選過，再叫 onRole；按看園區、按連結各叫各的', () => {
     hooks.onRole.mockImplementation(() => { expect(record.tried.shop).toBe(true); });
-    btn('shop').click();
+    later(); btn('shop').click();
     expect(hooks.onRole).toHaveBeenCalledTimes(1); expect(hooks.onRole).toHaveBeenCalledWith('shop');
     expect(hooks.onWatch).not.toHaveBeenCalled(); expect(hooks.onAbout).not.toHaveBeenCalled();
     $('watch-btn').click(); expect(hooks.onWatch).toHaveBeenCalledTimes(1);
@@ -121,7 +123,7 @@ describe('角色清單', () => {
   });
 
   it('清單收起來以後，留在上面的按鈕按了沒有作用', () => {
-    start.hide();
+    later(); start.hide();
     btn('farm').click(); $('watch-btn').click(); $('about-btn').click();
     expect(hooks.onRole).not.toHaveBeenCalled(); expect(hooks.onWatch).not.toHaveBeenCalled(); expect(hooks.onAbout).not.toHaveBeenCalled();
     expect(record.tried.farm).toBeUndefined();
@@ -129,12 +131,45 @@ describe('角色清單', () => {
 
   it('自動模式的開關：打勾就開，跟著 auto 的狀態顯示', () => {
     expect($('auto-box').checked).toBe(false);
-    $('auto-box').click();
+    later(); $('auto-box').click();
     expect(auto.on).toBe(true);
     auto.set(false); start.refresh();
     expect($('auto-box').checked).toBe(false);
     auto.set(true); start.show();
     expect($('auto-box').checked).toBe(true);
+  });
+
+  // A double tap on the button that brought the list up (直接開始, 換一個角色, …) must not press what is now under the finger.
+  it('清單剛出現的 0.35 秒內按了不算：沒記選過、沒開始角色、沒切換；之後按才算', () => {
+    later(100);
+    btn('farm').click(); $('watch-btn').click(); $('about-btn').click(); $('auto-box').click();
+    document.querySelector('#start .auto-row').click();
+    expect(hooks.onRole).not.toHaveBeenCalled(); expect(hooks.onWatch).not.toHaveBeenCalled(); expect(hooks.onAbout).not.toHaveBeenCalled();
+    expect(record.tried).toEqual({}); expect(auto.on).toBe(false); expect($('auto-box').checked).toBe(false);
+    later(240); btn('farm').click();                             // 340 ms: still the same tap
+    expect(hooks.onRole).not.toHaveBeenCalled(); expect(record.tried).toEqual({});
+    later(60); btn('farm').click();                              // 400 ms
+    expect(hooks.onRole).toHaveBeenCalledTimes(1); expect(hooks.onRole).toHaveBeenCalledWith('farm'); expect(record.tried.farm).toBe(true);
+    $('auto-box').click(); expect(auto.on).toBe(true); expect($('auto-box').checked).toBe(true);
+  });
+
+  it('用鍵盤按（Enter 或空白鍵送出的 click）也一樣：剛出現時不算，之後才算', () => {
+    const key = (b) => { b.focus(); b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 })); };
+    later(50);
+    key(btn('work')); key($('watch-btn')); key($('auto-box'));
+    expect(hooks.onRole).not.toHaveBeenCalled(); expect(hooks.onWatch).not.toHaveBeenCalled();
+    expect(record.tried).toEqual({}); expect(auto.on).toBe(false); expect($('auto-box').checked).toBe(false);
+    later();
+    key(btn('work'));
+    expect(hooks.onRole).toHaveBeenCalledWith('work'); expect(record.tried.work).toBe(true);
+  });
+
+  it('每次重新出現都重新算那 0.35 秒', () => {
+    later(5000); start.hide(); start.show();
+    later(100); btn('shop').click();
+    expect(hooks.onRole).not.toHaveBeenCalled();
+    later(); btn('shop').click();
+    expect(hooks.onRole).toHaveBeenCalledWith('shop');
   });
 
   it('按鈕有焦點時打開清單，焦點移到第一個角色；沒有焦點時不搶', () => {
@@ -157,7 +192,7 @@ describe('角色清單接到真的頁面', () => {
   it('按角色：記下選過、存檔、開始那個角色', async () => {
     const storage = memoryStorage(seen);
     const r = await page.open({ storage });
-    btn('shop').click();
+    page.wait(); btn('shop').click();
     expect(r.record.tried.shop).toBe(true);
     expect(saved(storage).tried).toEqual({ shop: true });
     expect(r.park.state.mode).toBe('role'); expect(r.park.state.role).toBe('shop'); expect(r.park.state.ti).toBe(0);
@@ -172,9 +207,37 @@ describe('角色清單接到真的頁面', () => {
   it('連按兩下角色鈕：只開始一次', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
     const run0 = r.park.state.run;
-    btn('farm').click(); btn('farm').click();
+    page.wait(); btn('farm').click(); btn('farm').click();
     expect(r.park.state.run).toBe(run0 + 1);
     expect(r.park.state.role).toBe('farm');
+  });
+
+  it('歡迎框的「直接開始」連按兩下：第二下落在清單上不算（沒有角色開始、沒記選過、沒存）；過一下再按才開始', async () => {
+    const storage = memoryStorage();
+    const r = await page.open({ storage });
+    page.wait(); $('in-back').click();                          // 直接開始
+    expect($('start').hidden).toBe(false);
+    page.wait(50); btn('farm').click();                         // the second tap, 50 ms later
+    expect(r.park.state.mode).toBe('menu'); expect(r.park.state.role).toBeNull();
+    expect(r.record.tried).toEqual({}); expect(saved(storage).tried).toEqual({});
+    expect($('start').hidden).toBe(false); expect($('hud').hidden).toBe(true);
+    expect(btn('farm').classList.contains('played')).toBe(false); expect(btn('farm').querySelector('.role-first').hidden).toBe(false);
+    page.wait(500); btn('farm').click();
+    expect(r.park.state.mode).toBe('role'); expect(r.park.state.role).toBe('farm'); expect(saved(storage).tried).toEqual({ farm: true });
+  });
+
+  it('結尾卡的「換一個角色」與右上角的換角色連按兩下：第二下落在清單上不算', async () => {
+    const storage = memoryStorage(seen);
+    const r = await page.open({ storage });
+    page.wait(); btn('acct').click();
+    toLastTask(r, 'acct'); $('sh-next').click(); page.frame();
+    expect($('end').hidden).toBe(false);
+    $('end-menu').click(); page.wait(50); $('watch-btn').click(); btn('vol').click();
+    expect(r.park.state.mode).toBe('menu'); expect(r.record.tried.vol).toBeUndefined(); expect(saved(storage).tried.vol).toBeUndefined();
+    page.wait(); btn('work').click(); page.frame();
+    expect(r.park.state.role).toBe('work');
+    $('menu-btn').click(); page.wait(50); btn('mentor').click();
+    expect(r.park.state.mode).toBe('menu'); expect(r.record.tried.mentor).toBeUndefined();
   });
 
   it('存不了的瀏覽器：照樣能選角色', async () => {
@@ -183,8 +246,8 @@ describe('角色清單接到真的頁面', () => {
     for (const opts of [{ storage: undefined }, { storage: undefined, win: deniedWin }, { storage: throwing }]) {
       page.stop(); mountPage();
       const r = await page.open(opts);
-      $('in-back').click();
-      btn('vol').click();
+      page.wait(); $('in-back').click();
+      page.wait(); btn('vol').click();
       expect(r.park.state.mode).toBe('role'); expect(r.park.state.role).toBe('vol');
       expect($('start').hidden).toBe(true); expect($('hud').hidden).toBe(false);
       $('menu-btn').click();
@@ -194,13 +257,13 @@ describe('角色清單接到真的頁面', () => {
 
   it('先看園區自己運轉 → 看園區；看園區的卡片按鈕與右上角的換角色都回到清單', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
-    $('watch-btn').click();
+    page.wait(); $('watch-btn').click();
     expect(r.park.state.mode).toBe('watch'); expect($('start').hidden).toBe(true); expect($('hud').hidden).toBe(false);
     page.frame();
     expect($('task-go').textContent).toBe(d.ui.watch.go);
     $('task-go').click();
     expect(r.park.state.mode).toBe('menu'); expect($('start').hidden).toBe(false); expect($('hud').hidden).toBe(true);
-    btn('mentor').click(); page.frame();
+    page.wait(); btn('mentor').click(); page.frame();
     $('menu-btn').click();
     expect(r.park.state.mode).toBe('menu'); expect($('start').hidden).toBe(false); expect($('hud').hidden).toBe(true);
     expect(btn('mentor').classList.contains('played')).toBe(true);
@@ -208,10 +271,10 @@ describe('角色清單接到真的頁面', () => {
 
   it('點開的人物說明卡，回清單再進來時已經收起來', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
-    $('watch-btn').click(); page.frame();
+    page.wait(); $('watch-btn').click(); page.frame();
     r.hud.showInfo('標題', '第二行', '');
     expect($('who').hidden).toBe(false);
-    $('task-go').click(); btn('farm').click();
+    $('task-go').click(); page.wait(); btn('farm').click();
     expect($('who').hidden).toBe(true);
   });
 
@@ -221,7 +284,7 @@ describe('角色清單接到真的頁面', () => {
     expect(r.park.state.mode).toBe('menu'); expect($('hud').hidden).toBe(true); expect($('start').hidden).toBe(false);
     expect($('sheet').hidden).toBe(true);                              // at once, not on the next frame
     page.frame();
-    btn(to).click();
+    page.wait(); btn(to).click();
     expect($('task-title').textContent).toBe(d.days[to].tasks[0].title);
     page.frame();
     const st = r.park.state;
@@ -236,7 +299,7 @@ describe('角色清單接到真的頁面', () => {
 
   it('玩到一半離開（特寫開著），換一個角色：從第一件事乾乾淨淨開始', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
-    btn('farm').click(); openTask(r.park); page.frame();
+    page.wait(); btn('farm').click(); openTask(r.park); page.frame();
     expect($('sheet').hidden).toBe(false);
     expect(r.park.task.place).toBe('gate'); expect($('sh-stage').textContent).toContain('慢慢說');     // the talk with the mentor at the gate
     leaveAndSwitch(r, 'work');
@@ -246,7 +309,7 @@ describe('角色清單接到真的頁面', () => {
 
   it('玩到一半離開（時間快轉中），換一個角色：從第一件事乾乾淨淨開始', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
-    btn('farm').click();
+    page.wait(); btn('farm').click();
     for (let i = 0; i < 8 && !r.park.state.ff; i++) playTask(r.park);
     expect(r.park.state.ff).toBe(true);
     page.frame();
@@ -256,7 +319,7 @@ describe('角色清單接到真的頁面', () => {
 
   it('玩到一半離開（自動模式在跑），換一個角色：從第一件事乾乾淨淨開始，自動模式還開著', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
-    $('auto-box').click(); btn('learner').click();
+    page.wait(); $('auto-box').click(); btn('learner').click();
     for (let i = 0; i < 6000 && !(r.park.state.scene && r.auto.target); i++) page.frame(50);
     expect(r.auto.target).not.toBeNull();
     page.frame();
@@ -268,11 +331,11 @@ describe('角色清單接到真的頁面', () => {
 
   it('接手角色時鏡頭直接對準你，不是從別處慢慢移過來；看園區時對準園區中央', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
-    $('watch-btn').click(); r.view.cam.free = 3; r.view.cam.x = 100; r.view.cam.y = 100;
-    $('task-go').click(); btn('shop').click();
+    page.wait(); $('watch-btn').click(); r.view.cam.free = 3; r.view.cam.x = 100; r.view.cam.y = 100;
+    $('task-go').click(); page.wait(); btn('shop').click();
     expect(r.view.cam.free).toBe(0);
     expect([r.view.cam.x, r.view.cam.y]).toEqual([r.park.player.x, r.park.player.y]);
-    $('menu-btn').click(); r.view.cam.x = 100; $('watch-btn').click();
+    $('menu-btn').click(); r.view.cam.x = 100; page.wait(); $('watch-btn').click();
     expect([r.view.cam.x, r.view.cam.y]).toEqual([d.map.world.cx, d.map.world.cy]);
   });
 
@@ -287,7 +350,7 @@ describe('角色清單接到真的頁面', () => {
   it('自己玩完一次：回清單是綠色「✓ 玩過 1 次」；收工連按兩下也只算一次', async () => {
     const storage = memoryStorage(seen);
     const r = await page.open({ storage });
-    btn('farm').click();
+    page.wait(); btn('farm').click();
     toLastTask(r, 'farm');
     $('sh-next').click(); $('sh-next').click(); page.frame(); page.frame();
     expect(r.record.done.farm).toBe(1); expect(saved(storage).done.farm).toBe(1);
@@ -300,7 +363,7 @@ describe('角色清單接到真的頁面', () => {
 
   it('結尾卡：再當一次接同一個角色，自動模式還開著；看園區自己運轉到看園區', async () => {
     const r = await page.open({ storage: memoryStorage(seen) });
-    $('auto-box').click(); btn('acct').click();
+    page.wait(); $('auto-box').click(); btn('acct').click();
     toLastTask(r, 'acct');
     $('sh-next').click(); page.frame();
     expect($('end').hidden).toBe(false); expect(r.record.done.acct).toBeUndefined();

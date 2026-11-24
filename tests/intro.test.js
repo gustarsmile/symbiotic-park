@@ -80,12 +80,13 @@ describe('歡迎框的資料', () => {
 });
 
 describe('歡迎框的畫面', () => {
-  let restore;
-  beforeEach(() => { mountPage(); restore = installFakeCanvas(); });
+  let restore, t;
+  const now = () => t, later = (ms = 400) => { t += ms; };       // the card ignores presses just after it opens or turns a page
+  beforeEach(() => { mountPage(); restore = installFakeCanvas(); t = 1000; });
   afterEach(() => restore());
 
   it('三頁來回：頁碼、按鈕的字、跳過說明只在第二頁起出現', () => {
-    const intro = createIntro(d, emptyRecord(), {});
+    const intro = createIntro(d, emptyRecord(), { now });
     const B = d.intro.buttons;
     intro.open();
     const shows = (step, back, next, skipHidden, at) => {
@@ -97,11 +98,11 @@ describe('歡迎框的畫面', () => {
     };
     expect($('intro').hidden).toBe(false);
     shows('歡迎・1／3', B.start, B.how, true, 0);
-    $('in-next').click(); shows('怎麼運作・2／3', B.back, B.next, false, 1);
+    later(); $('in-next').click(); shows('怎麼運作・2／3', B.back, B.next, false, 1);
     expect($('in-skip').textContent).toBe(B.skip);
-    $('in-next').click(); shows('怎麼逛・3／3', B.back, B.pick, false, 2);
-    $('in-back').click(); shows('怎麼運作・2／3', B.back, B.next, false, 1);
-    $('in-back').click(); shows('歡迎・1／3', B.start, B.how, true, 0);
+    later(); $('in-next').click(); shows('怎麼逛・3／3', B.back, B.pick, false, 2);
+    later(); $('in-back').click(); shows('怎麼運作・2／3', B.back, B.next, false, 1);
+    later(); $('in-back').click(); shows('歡迎・1／3', B.start, B.how, true, 0);
     expect($('intro').hidden).toBe(false);
   });
 
@@ -130,29 +131,53 @@ describe('歡迎框的畫面', () => {
 
   it('關掉的三種按法都記下看過了、叫一次 onClose；連按兩下也只叫一次', () => {
     const ways = [
-      () => $('in-back').click(),                                          // 直接開始
-      () => { $('in-next').click(); $('in-skip').click(); },                // 跳過說明
-      () => { $('in-next').click(); $('in-next').click(); $('in-next').click(); },  // 選一個角色
+      () => { later(); $('in-back').click(); },                                                     // 直接開始
+      () => { later(); $('in-next').click(); later(); $('in-skip').click(); },                      // 跳過說明
+      () => { later(); $('in-next').click(); later(); $('in-next').click(); later(); $('in-next').click(); },  // 選一個角色
     ];
     for (const close of ways) {
       mountPage();
       const record = emptyRecord(), onClose = vi.fn();
-      const intro = createIntro(d, record, { onClose });
+      const intro = createIntro(d, record, { onClose, now });
       intro.open();
       close();
       expect(record.intro).toBe(true); expect($('intro').hidden).toBe(true); expect(onClose).toHaveBeenCalledTimes(1);
-      $('in-back').click(); $('in-next').click(); $('in-skip').click(); intro.close();
+      later(); $('in-back').click(); $('in-next').click(); $('in-skip').click(); intro.close();
       expect(onClose).toHaveBeenCalledTimes(1);
     }
   });
 
   it('再打開一次從第一頁開始；按鈕有焦點時開框，焦點移到「園區怎麼運作」', () => {
-    const intro = createIntro(d, emptyRecord(), {});
-    intro.open(); $('in-next').click(); $('in-next').click(); intro.close();
+    const intro = createIntro(d, emptyRecord(), { now });
+    intro.open(); later(); $('in-next').click(); later(); $('in-next').click();
+    expect($('in-step').textContent).toBe('怎麼逛・3／3');
+    intro.close();
     const other = document.createElement('button'); document.body.append(other); other.focus();
     intro.open();
     expect($('in-step').textContent).toBe('歡迎・1／3');
     expect(document.activeElement).toBe($('in-next'));
+  });
+
+  // A double tap on 園區怎麼運作 must not also press 下一頁, which takes its place; nor may a tap on the screen before the
+  // welcome press a button on it.
+  it('剛打開、剛換頁的 0.35 秒內按了不算（換頁、關掉都不會）；之後按才算；鍵盤送出的 click 也一樣', () => {
+    let t = 1000;
+    const record = emptyRecord(), onClose = vi.fn();
+    const intro = createIntro(d, record, { onClose, now: () => t });
+    intro.open();
+    const at = () => $('in-step').textContent;
+    t += 100; $('in-back').click(); $('in-next').click();
+    expect(at()).toBe('歡迎・1／3'); expect($('intro').hidden).toBe(false); expect(onClose).not.toHaveBeenCalled(); expect(record.intro).toBe(false);
+    t += 300; $('in-next').click();                              // 園區怎麼運作
+    expect(at()).toBe('怎麼運作・2／3');
+    t += 50; $('in-next').click(); $('in-skip').click();         // the second half of a double tap
+    expect(at()).toBe('怎麼運作・2／3'); expect($('intro').hidden).toBe(false); expect(onClose).not.toHaveBeenCalled();
+    t += 100; $('in-back').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 }));
+    expect(at()).toBe('怎麼運作・2／3');
+    t += 400; $('in-next').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 }));
+    expect(at()).toBe('怎麼逛・3／3');
+    t += 400; $('in-next').click();                              // 選一個角色
+    expect($('intro').hidden).toBe(true); expect(onClose).toHaveBeenCalledTimes(1); expect(record.intro).toBe(true);
   });
 
   it('沒有東西有焦點時開框（第一次打開網頁），不搶焦點', () => {
@@ -172,7 +197,7 @@ describe('歡迎框接到真的頁面', () => {
     const r = await page.open({ storage });
     expect($('intro').hidden).toBe(false); expect($('start').hidden).toBe(true); expect($('hud').hidden).toBe(true);
     expect(r.park.state.mode).toBe('menu');
-    $('in-back').click();                                // 直接開始
+    page.wait(); $('in-back').click();                   // 直接開始
     expect($('intro').hidden).toBe(true); expect($('start').hidden).toBe(false);
     expect(saved(storage).intro).toBe(true);
     // the next visit: a new page on the same browser
@@ -182,11 +207,19 @@ describe('歡迎框接到真的頁面', () => {
     expect($('intro').hidden).toBe(true); expect($('start').hidden).toBe(false);
   });
 
+  it('「園區怎麼運作」連按兩下：只翻一頁，不會跳過第二頁', async () => {
+    await page.open();
+    page.wait(); $('in-next').click(); page.wait(50); $('in-next').click();
+    expect($('in-step').textContent).toBe('怎麼運作・2／3');
+    page.wait(); $('in-next').click();
+    expect($('in-step').textContent).toBe('怎麼逛・3／3');
+  });
+
   it('最後一頁的按鈕是選一個角色，按了出現角色清單', async () => {
     const r = await page.open();
-    $('in-next').click(); $('in-next').click();
+    page.wait(); $('in-next').click(); page.wait(); $('in-next').click();
     expect($('in-next').textContent).toBe(d.intro.buttons.pick);
-    $('in-next').click();
+    page.wait(); $('in-next').click();
     expect($('intro').hidden).toBe(true); expect($('start').hidden).toBe(false);
     expect(document.querySelectorAll('#roles .role')).toHaveLength(7);
     expect(r.record.intro).toBe(true); expect(saved(r.storage).intro).toBe(true);
@@ -195,10 +228,10 @@ describe('歡迎框接到真的頁面', () => {
   it('從角色清單的「這個園區想做什麼、怎麼運作？」再打開；關掉回到清單', async () => {
     await page.open({ storage: memoryStorage({ intro: true, tried: {}, done: {} }) });
     expect($('start').hidden).toBe(false); expect($('intro').hidden).toBe(true);
-    $('about-btn').click();
+    page.wait(); $('about-btn').click();
     expect($('intro').hidden).toBe(false); expect($('start').hidden).toBe(true);
     expect($('in-step').textContent).toBe('歡迎・1／3');
-    $('in-next').click(); $('in-skip').click();
+    page.wait(); $('in-next').click(); page.wait(); $('in-skip').click();
     expect($('intro').hidden).toBe(true); expect($('start').hidden).toBe(false);
   });
 
@@ -217,7 +250,7 @@ describe('歡迎框接到真的頁面', () => {
       page.stop(); mountPage();
       const r = await page.open(opts);
       expect($('intro').hidden).toBe(false);
-      $('in-back').click();
+      page.wait(); $('in-back').click();
       expect($('intro').hidden).toBe(true); expect($('start').hidden).toBe(false);
       expect(r.record.intro).toBe(true);
     }

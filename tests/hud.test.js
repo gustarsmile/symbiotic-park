@@ -102,12 +102,12 @@ describe('hud: 角色模式的任務卡', () => {
 
   it('快轉中：卡片寫等一下，按鈕藏起來，時鐘變色', () => {
     const hud = createHud(park, auto, data, {});
-    park.beginRole('farm', 4); park.state.ff = true; hud.update();
+    park.beginRole('farm', 5); park.state.ff = true; hud.update();
     expect($('task-title').textContent).toBe(fill(data.ui.task.waitTitle, { s: task().title }));
     expect($('task-note').textContent).toBe(task().wait);
     expect($('task-go').hidden).toBe(true);
     expect($('clock').classList.contains('ff')).toBe(true); expect($('clock-s').textContent).toBe(data.ui.task.ffClock);
-    park.beginRole('farm', 7); park.state.ff = true; hud.update();
+    park.beginRole('farm', 8); park.state.ff = true; hud.update();
     expect(task().wait).toBeUndefined(); expect($('task-note').textContent).toBe(data.ui.task.ffNote);
     park.state.ff = false; hud.update();
     expect($('task-go').hidden).toBe(false); expect($('clock').classList.contains('ff')).toBe(false);

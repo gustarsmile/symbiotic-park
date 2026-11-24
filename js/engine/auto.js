@@ -2,7 +2,7 @@
 // Pure: no drawing. Every pause is counted in seconds handed to step(), never in real time.
 export const AUTO = {
   afterBegin: 1.2, afterToggle: 0.8, afterWalk: 0.6, sceneOpen: 1.8, highlight: 0.5,
-  afterPress: 0.8, idle: 0.3, afterNext: 1.2, readBase: 3, readPerChar: 0.16, readMin: 6, readMax: 18,
+  afterPress: 0.8, idle: 0.3, afterNext: 1.2, readBase: 3, readPerChar: 0.16, readMin: 6, readMax: 18, lineMin: 3,
 };
 
 // Parts with words only go 1.5x; parts without words go 2x.
@@ -11,6 +11,18 @@ export const FAST = { read: 1.5, move: 2 };
 export function readSeconds(text) {
   const t = AUTO.readBase + String(text ?? '').length * AUTO.readPerChar;
   return Math.min(AUTO.readMax, Math.max(AUTO.readMin, t));
+}
+
+// The pause to read one line a person says in a close-up: the same count, with a shorter floor.
+export function lineSeconds(text) {
+  const t = AUTO.readBase + String(text ?? '').length * AUTO.readPerChar;
+  return Math.min(AUTO.readMax, Math.max(AUTO.lineMin, t));
+}
+
+// The line a person says that the scene shows now (a steps part's show.text), or null.
+function lineOf(scene) {
+  const t = scene.view().show?.text;
+  return typeof t === 'string' && t !== '' ? t : null;
 }
 
 // move: for park.tick (walking, the clock, fast-forward, waits inside scenes).
@@ -70,7 +82,11 @@ export function createAuto(park) {
       const id = scene.auto();
       if (id === null) wait = AUTO.idle * auto.k;
       else if (id !== auto.target) { auto.target = id; wait = AUTO.highlight * auto.k; }
-      else { park.press(id); auto.target = null; wait = AUTO.afterPress * auto.k; }
+      else {
+        park.press(id); auto.target = null;
+        const line = lineOf(scene);                // a press that puts a new line on screen waits until it can be read
+        wait = (line === null ? AUTO.afterPress : lineSeconds(line)) * auto.k;
+      }
     },
   };
   return auto;

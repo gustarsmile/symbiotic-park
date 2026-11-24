@@ -1,5 +1,6 @@
 // The role list: the seven roles to take over for a day, the auto-mode switch, a way to just watch the park, and the
 // link back to the welcome. A role the visitor has picked before is green; a role finished by hand shows how many times.
+// The role the data suggests to begin with carries a small tag until it has been picked.
 import { $, el, setText } from './dom.js';
 import { portrait } from './character.js';
 import { fill } from '../engine/text.js';
@@ -19,7 +20,7 @@ export function createStart(data, record, auto, { onRole, onWatch, onAbout } = {
 
   // A click that lands after the list has gone (a double press) is ignored, so a role starts once.
   const whileShown = (fn) => () => { if (!root.hidden) fn(); };
-  const roles = el('div', 'roles'), marks = new Map();
+  const roles = el('div', 'roles'), marks = new Map(), first = ui.first ?? null;
   roles.id = 'roles';
   for (const id of ROLE_IDS) {
     const day = data.days[id], who = data.people.find((p) => p.id === day.who);
@@ -27,10 +28,12 @@ export function createStart(data, record, auto, { onRole, onWatch, onAbout } = {
     const b = el('button', 'role'), pic = el('span'), text = el('span', 'role-text'), name = el('b', '', day.name), done = el('i', 'role-done');
     b.id = 'role-' + id; b.dataset.role = id;
     pic.append(portrait(who.look, 'happy', 36, day.hold));
-    name.append(done); text.append(name, el('small', '', day.desc));
+    const tag = first && first.role === id ? el('i', 'role-first', first.label) : null;
+    name.append(done); if (tag) name.append(tag);
+    text.append(name, el('small', '', day.desc));
     b.append(pic, text);
     b.addEventListener('click', whileShown(() => { markTried(record, id); onRole?.(id); }));
-    roles.append(b); marks.set(id, { b, done });
+    roles.append(b); marks.set(id, { b, done, tag });
   }
   const watch = el('button', 'ghost', ui.watch); watch.id = 'watch-btn';
   roles.append(watch);
@@ -43,12 +46,14 @@ export function createStart(data, record, auto, { onRole, onWatch, onAbout } = {
   watch.addEventListener('click', whileShown(() => onWatch?.()));
   box.addEventListener('change', () => auto.set(box.checked));
 
-  // Green for every role picked before; "played n times" for a role finished by hand n times. The switch shows auto mode.
+  // Green for every role picked before; "played n times" for a role finished by hand n times; the suggestion's tag only
+  // while its role is not green yet. The switch shows auto mode.
   function refresh() {
-    for (const [id, { b, done }] of marks) {
+    for (const [id, { b, done, tag }] of marks) {
       const n = record.done[id] ?? 0, played = n > 0 || !!record.tried[id];
       b.classList.toggle('played', played);
       setText(done, !played ? '' : n > 0 ? fill(ui.done, { n }) : ui.tried);
+      if (tag) tag.hidden = played;
     }
     box.checked = auto.on;
   }

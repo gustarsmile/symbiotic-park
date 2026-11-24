@@ -49,16 +49,16 @@ describe('sceneView', () => {
   });
 
   it('卡片上有地點、標題、how；說明跟下一步在做完以前是藏著的', () => {
-    roleAt('farm', 0);
+    roleAt('farm', 1);
     const t = park.task;
     expect($('sh-place').textContent).toBe(t.placeName); expect($('sh-title').textContent).toBe(t.head);
     expect($('sh-how').textContent).toBe(t.how); expect($('sh-how').hidden).toBe(false);
-    expect($('sh-status').textContent).toBe(fill(t.scene.count, { n: 0, t: 6 }));
+    expect($('sh-status').textContent).toBe(fill(t.scene[0].count, { n: 0, t: 6 }));
     expect($('sh-why').hidden).toBe(true); expect($('sh-next').hidden).toBe(true);
   });
 
   it('沒有 how 的那件事、以及 hideHow 的那一段，how 那一行藏起來', () => {
-    roleAt('farm', 7);
+    roleAt('farm', 8);
     expect(park.task.how).toBeUndefined(); expect($('sh-how').hidden).toBe(true);
     roleAt('acct', 2);
     expect($('sh-how').hidden).toBe(false);
@@ -118,7 +118,7 @@ describe('sceneView', () => {
   it('自動模式框起來的那一顆有 auto-hit，只有那一顆，換目標就跟著換', () => {
     const spy = vi.fn(); const proto = globalThis.HTMLElement.prototype; const had = proto.scrollIntoView; proto.scrollIntoView = spy;
     try {
-      roleAt('farm', 0);
+      roleAt('farm', 1);
       auto.target = 'i2'; view.update();
       const hits = () => [...stage.querySelectorAll('.auto-hit')].map((b) => b.dataset.id);
       expect(hits()).toEqual(['i2']); expect(spy).toHaveBeenCalledWith({ block: 'nearest' });
@@ -133,12 +133,12 @@ describe('sceneView', () => {
   });
 
   it('連點同一顆：只算一次（不管按的是舊的還是新的那一顆）', () => {
-    roleAt('farm', 0);
+    roleAt('farm', 1);
     const first = stage.querySelector('[data-id="i0"]');
     first.click(); first.click();
-    expect($('sh-status').textContent).toBe(fill(park.task.scene.count, { n: 1, t: 6 }));
+    expect($('sh-status').textContent).toBe(fill(park.task.scene[0].count, { n: 1, t: 6 }));
     stage.querySelector('[data-id="i0"]').click();
-    expect($('sh-status').textContent).toBe(fill(park.task.scene.count, { n: 1, t: 6 }));
+    expect($('sh-status').textContent).toBe(fill(park.task.scene[0].count, { n: 1, t: 6 }));
     expect(park.state.scene.controls()).toHaveLength(5);
     expect(stage.querySelector('[data-id="i0"]').disabled).toBe(true);
   });
@@ -151,15 +151,15 @@ describe('sceneView', () => {
   });
 
   it('畫面沒變就不重畫（按到一半的鈕不會被換掉）', () => {
-    roleAt('farm', 0);
+    roleAt('farm', 1);
     const b = stage.querySelector('[data-id="i1"]');
     view.update(); view.update();
     expect(stage.querySelector('[data-id="i1"]')).toBe(b);
   });
 
   it('長條的寬度跟著 progress × width 走，不重畫、不靠 CSS 轉場', () => {
-    roleAt('farm', 7);
-    const rows = d.days.farm.tasks[7].scene.rows, wait = d.days.farm.tasks[7].scene.wait;
+    roleAt('farm', 8);
+    const rows = d.days.farm.tasks[8].scene.rows, wait = d.days.farm.tasks[8].scene.wait;
     const bars = [...stage.querySelectorAll('.track i')];
     expect(bars).toHaveLength(rows.length);
     park.tick(wait / 2); view.update();
@@ -173,7 +173,7 @@ describe('sceneView', () => {
   });
 
   it('烘乾機的長條也是 progress × 100', () => {
-    roleAt('farm', 3);
+    roleAt('farm', 4);
     stage.querySelector('[data-id="step"]').click();         // lay the tray
     expect(parseFloat(stage.querySelector('.bar i').style.width)).toBe(0);
     stage.querySelector('[data-id="step"]').click();         // start the dryer
@@ -198,7 +198,7 @@ describe('sceneView', () => {
   });
 
   it('用鍵盤按完一顆，焦點留在畫面上（下一顆能按的），不掉到頁面最上面', () => {
-    roleAt('farm', 0);
+    roleAt('farm', 1);
     stage.querySelector('[data-id="i0"]').focus();
     expect(document.activeElement.dataset.id).toBe('i0');
     document.activeElement.click();
@@ -208,14 +208,14 @@ describe('sceneView', () => {
   });
 
   it('最後一顆按完，焦點移到「好，下一件事」', () => {
-    roleAt('farm', 0);
+    roleAt('farm', 1);
     stage.querySelector('[data-id="i0"]').focus();
     while (!park.state.scene.done) { stage.querySelector(`[data-id="${park.state.scene.auto()}"]`).focus(); document.activeElement.click(); }
     expect(document.activeElement).toBe($('sh-next'));
   });
 
   it('不是畫面上的東西有焦點時，重畫不搶焦點', () => {
-    roleAt('farm', 0);
+    roleAt('farm', 1);
     const other = document.createElement('input'); document.body.appendChild(other); other.focus();
     stage.querySelector('[data-id="i0"]').click();
     expect(document.activeElement).toBe(other);
@@ -227,7 +227,7 @@ describe('sceneView', () => {
     $('sh-next').click();
     expect(park.state.ti).toBe(1); expect(park.state.scene).toBeNull(); expect($('sheet').hidden).toBe(true);
     expect(onEnd).not.toHaveBeenCalled();
-    roleAt('farm', 7);
+    roleAt('farm', 8);
     finishScene();
     $('sh-next').click(); $('sh-next').click(); view.update(); view.update();
     expect(park.state.mode).toBe('end'); expect(onEnd).toHaveBeenCalledTimes(1);
@@ -249,7 +249,7 @@ describe('sceneView', () => {
   });
 
   it('分級那種有圖的分類：卡片是一個大圖，兩顆鈕帶圖示和計數', () => {
-    roleAt('farm', 2);
+    roleAt('farm', 3);
     expect(stage.querySelector('.one svg')).not.toBeNull();
     const btns = [...stage.querySelectorAll('.pick-btn')];
     expect(btns).toHaveLength(2);
@@ -257,7 +257,7 @@ describe('sceneView', () => {
   });
 
   it('分類做完，沒有 done 文字就把卡片藏起來；有的話顯示它', () => {
-    roleAt('farm', 2);
+    roleAt('farm', 3);
     finishScene();
     expect(stage.querySelector('.one')).toBeNull();
     roleAt('vol', 0);
@@ -266,7 +266,7 @@ describe('sceneView', () => {
   });
 
   it('交菜箱（櫃台）：排隊的人、箱子、對話；交一箱就多一句話', () => {
-    roleAt('farm', 5);
+    roleAt('farm', 6);
     expect(stage.querySelectorAll('.queue .fam')).toHaveLength(3);
     expect(stage.querySelectorAll('.items .it')).toHaveLength(3);
     stage.querySelector('[data-id="i0"]').click();
@@ -349,8 +349,43 @@ describe('sceneView', () => {
   });
 
   it('農夫收工那張：盈餘怎麼分的三格都在', () => {
-    roleAt('farm', 7);
+    roleAt('farm', 8);
     expect(stage.querySelectorAll('.split .chips span')).toHaveLength(3);
     expect(stage.querySelector('.split b').textContent).toBe(park.task.scene.split.title);
+  });
+
+  it('大門口的對話：導師的臉和他說的那一句，按鈕是你的回答；來源不畫出來', () => {
+    roleAt('farm', 0);
+    const sc = park.task.scene;
+    const said = () => stage.querySelector('.ask .bigcard').textContent;
+    expect(stage.querySelector('.ask canvas')).not.toBeNull(); expect(said()).toBe(sc.show.text);
+    sc.steps.forEach((st, k) => {
+      expect(stage.querySelector('[data-id="step"]').textContent).toBe(st.label);
+      stage.querySelector('[data-id="step"]').click(); view.update();
+      expect(said()).toBe(st.show.text);
+      expect(stage.textContent).not.toContain(st.show.source);
+      expect($('sh-why').hidden).toBe(k < sc.steps.length - 1);
+    });
+    expect(stage.querySelector('[data-id="step"]')).toBeNull();
+    expect($('sh-why').textContent).toBe(park.task.why.text);
+  });
+
+  it('採收完換手機那一段（how 藏起來）；香草園割完換三區感測器，分錯有提示，做完那一句跟解說一起出現', () => {
+    roleAt('farm', 1);
+    while (park.state.scene.view().part === 0) pressAuto();
+    const phone = park.task.scene[1];
+    expect(stage.querySelector('.slot svg')).not.toBeNull(); expect($('sh-how').hidden).toBe(true); expect($('sh-status').textContent).toBe(phone.status);
+    pressAuto();
+    expect(stage.querySelector('.tip').textContent).toBe(phone.steps[0].show.note); expect($('sh-status').textContent).toBe(phone.steps[0].status);
+    expect($('sh-why').hidden).toBe(false);
+    roleAt('farm', 2);
+    while (park.state.scene.view().part === 0) pressAuto();
+    const water = park.task.scene[1];
+    expect($('sh-how').hidden).toBe(false); expect($('sh-status').textContent).toBe(fill(water.count, { i: 1, t: 3 }));
+    expect(stage.querySelector('.bigcard').textContent).toBe(water.items[0].label); expect(stage.querySelector('.one svg')).not.toBeNull();
+    stage.querySelector('[data-id="c0"]').click(); view.update();                // the first zone is still wet: the valve does not open
+    expect(stage.querySelector('.tip').textContent).toBe(water.tips[1].text); expect(stage.querySelector('.bigcard').textContent).toBe(water.items[0].label);
+    finishScene();
+    expect(stage.querySelector('.bigcard').textContent).toBe(water.done); expect($('sh-why').hidden).toBe(false);
   });
 });

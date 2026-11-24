@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createPark } from '../js/engine/park.js';
-import { createAuto, AUTO, FAST, pace, readSeconds } from '../js/engine/auto.js';
+import { createAuto, AUTO, FAST, pace, readSeconds, lineSeconds } from '../js/engine/auto.js';
 import { toMin } from '../js/engine/time.js';
 import { readData } from './helpers/data.js';
+import { playScene } from './helpers/days.js';
 
 const DT = 0.05;
 const data = readData();
@@ -143,9 +144,70 @@ describe('auto', () => {
     expect(park.state.mode).toBe('watch'); expect(auto.target).toBeNull();
   });
 
+  // Auto mode alone on one job: when each press happened (in the seconds auto mode is handed), the line a person
+  // says on screen right after it, and when the job was finished.
+  function pressesIn(role, ti, speed = 1) {
+    const pk = createPark(data), a = createAuto(pk);
+    a.setSpeed(speed); a.set(true); pk.beginRole(role, ti);
+    const out = []; let t = 0, rejected = 0;
+    const press = pk.press.bind(pk);
+    pk.press = (id) => { const r = press(id); if (!r.ok) rejected++; out.push({ t, line: pk.state.scene.view().show?.text ?? null }); return r; };
+    for (let n = 0; n < 40000 && pk.state.mode === 'role' && pk.state.ti === ti; n++) { const p = pace(DT, a, pk.state.mode); pk.tick(p.move); a.step(p.read); t += p.read; }
+    return { presses: out, finished: t, rejected, step: DT * (speed === 1.5 ? FAST.read : 1) };
+  }
+  const gaps = (r) => r.presses.slice(1).map((p, i) => p.t - r.presses[i].t);
+  // A pause of w seconds, then the highlight, then the press: counted in whole steps, so up to four steps more.
+  const near = (g, w, step) => { expect(g).toBeGreaterThanOrEqual(w - 1e-9); expect(g).toBeLessThan(w + 4 * step + 1e-9); };
+
+  it('一句話要讀的秒數：3 秒加每個字 0.16 秒，最少 3 秒、最多 18 秒', () => {
+    expect(lineSeconds('')).toBe(3); expect(lineSeconds('短')).toBeCloseTo(3.16, 9);
+    expect(lineSeconds('字'.repeat(25))).toBeCloseTo(7, 9); expect(lineSeconds('字'.repeat(200))).toBe(18);
+    expect(lineSeconds('字'.repeat(10))).toBeLessThan(readSeconds('字'.repeat(10)));          // a short line waits less than a short explanation
+  });
+
+  it('特寫裡換了一句人說的話：至少等 3 秒才按下一步；沒有人說話的步驟照舊', () => {
+    const talk = data.days.farm.tasks[0];
+    for (const speed of [1, 1.5]) {
+      // the talk at the gate: each reply is read before the next is pressed, the last one before the explanation is
+      const r = pressesIn('farm', 0, speed);
+      expect(r.rejected).toBe(0);
+      expect(r.presses.map((p) => p.line)).toEqual(talk.scene.steps.map((s) => s.show.text));
+      gaps(r).forEach((g, i) => {
+        const want = lineSeconds(r.presses[i].line) + AUTO.highlight;
+        expect(g).toBeGreaterThanOrEqual(3); near(g, want, r.step);
+      });
+      const last = r.presses.at(-1);
+      expect(r.finished - last.t).toBeGreaterThanOrEqual(lineSeconds(last.line) + readSeconds(talk.why.text) - 1e-9);
+      // the harvest: six taps, then the phone; nobody speaks, so the pause after each press is as before
+      const h = pressesIn('farm', 1, speed);
+      expect(h.presses).toHaveLength(7); expect(h.presses.every((p) => p.line === null)).toBe(true);
+      gaps(h).forEach((g) => near(g, AUTO.afterPress + AUTO.highlight, h.step));
+    }
+    // an existing scene with a line in a steps part: the volunteer's dinner (four bowls, then the newcomer at the door)
+    const v = pressesIn('vol', 4), vg = gaps(v);
+    expect(v.presses.map((p) => p.line)).toEqual([null, null, null, data.days.vol.tasks[4].scene[1].show.text, data.days.vol.tasks[4].scene[1].steps[0].show.text]);
+    vg.slice(0, 3).forEach((g) => near(g, AUTO.afterPress + AUTO.highlight, DT));
+    near(vg[3], lineSeconds(v.presses[3].line) + AUTO.highlight, DT);
+  });
+
+  it('農夫整輪自動跑到結尾卡，沒有一次被擋', () => {
+    for (const speed of [1, 1.5]) {
+      const pk = createPark(data), a = createAuto(pk);
+      a.setSpeed(speed); a.set(true); pk.beginRole('farm');
+      const calls = watchPresses(pk);
+      let rejected = 0, n = 0, real = 0; const press = pk.press;
+      pk.press = (x) => { const r = press(x); if (!r.ok) rejected++; return r; };
+      const tis = new Set();
+      while (pk.state.mode !== 'end' && n++ < 40000) { const t = pace(DT, a, pk.state.mode); pk.tick(t.move); a.step(t.read); real += DT; tis.add(pk.state.ti); }
+      expect(pk.state.mode).toBe('end'); expect(rejected).toBe(0);
+      expect([...tis]).toEqual(data.days.farm.tasks.map((_, i) => i));        // every job, in order, the talk at the gate first
+      expect(calls).toHaveLength(data.days.farm.tasks.reduce((k, t) => k + playScene(t.scene), 0)); expect(real).toBeLessThan(600);
+    }
+  });
+
   it('時間常數沒變', () => {
     expect(AUTO).toEqual({ afterBegin: 1.2, afterToggle: 0.8, afterWalk: 0.6, sceneOpen: 1.8, highlight: 0.5,
-      afterPress: 0.8, idle: 0.3, afterNext: 1.2, readBase: 3, readPerChar: 0.16, readMin: 6, readMax: 18 });
+      afterPress: 0.8, idle: 0.3, afterNext: 1.2, readBase: 3, readPerChar: 0.16, readMin: 6, readMax: 18, lineMin: 3 });
     expect(FAST).toEqual({ read: 1.5, move: 2 });
   });
 });

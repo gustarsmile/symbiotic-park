@@ -68,6 +68,41 @@ describe('角色清單', () => {
     expect(btn('work').querySelector('.role-done').textContent).toBe('✓ 玩過');
   });
 
+  // The tag that says where to begin: on the role named in the data, only until it has been picked.
+  const tag = (id) => btn(id).querySelector('.role-first');
+  const visible = (b) => [...b.querySelectorAll('.role-text b, .role-text b *')].filter((n) => !n.closest('[hidden]')).map((n) => (n.matches('b') ? n.firstChild.textContent : n.textContent)).filter(Boolean).join('|');
+
+  it('還沒選過農夫：農夫的按鈕有「建議先從這裡開始」，其他按鈕沒有', () => {
+    expect(d.ui.start.first).toEqual({ role: 'farm', label: '建議先從這裡開始' });
+    expect(tag('farm')).not.toBeNull(); expect(tag('farm').hidden).toBe(false);
+    expect(tag('farm').textContent).toBe(d.ui.start.first.label);
+    expect(tag('farm').parentElement).toBe(btn('farm').querySelector('.role-text b'));       // on the name's line, next to where 玩過 goes
+    expect(btn('farm').classList.contains('played')).toBe(false); expect(btn('farm').querySelector('.role-done').textContent).toBe('');
+    for (const id of ROLES.slice(1)) { expect(tag(id)).toBeNull(); expect(btn(id).textContent).not.toContain(d.ui.start.first.label); }
+    expect(document.querySelectorAll('#start .role-first')).toHaveLength(1);
+    // the role comes from the data, not from the code
+    const other = structuredClone(d); other.ui.start.first.role = 'acct';
+    mountPage(); createStart(other, emptyRecord(), auto, {}).show();
+    expect(document.querySelectorAll('#start .role-first')).toHaveLength(1);
+    expect(btn('acct').querySelector('.role-first').textContent).toBe('建議先從這裡開始'); expect(tag('farm')).toBeNull();
+  });
+
+  it('選過農夫以後：標籤不見，顯示玩過', () => {
+    expect(visible(btn('farm'))).toBe('一日農夫|建議先從這裡開始');
+    btn('farm').click();                                       // picking it marks it tried
+    expect(record.tried.farm).toBe(true);
+    start.show();
+    expect(tag('farm').hidden).toBe(true);
+    expect(btn('farm').classList.contains('played')).toBe(true); expect(btn('farm').querySelector('.role-done').textContent).toBe('✓ 玩過');
+    expect(visible(btn('farm'))).toBe('一日農夫|✓ 玩過');
+    record.done.farm = 1; start.refresh();
+    expect(tag('farm').hidden).toBe(true); expect(visible(btn('farm'))).toBe('一日農夫|✓ 玩過 1 次');
+    // another role picked first does not take the tag away
+    const fresh = emptyRecord(); fresh.tried.work = true;
+    mountPage(); createStart(d, fresh, auto, {}).show();
+    expect(tag('farm').hidden).toBe(false); expect(visible(btn('work'))).toBe('一日加工夥伴|✓ 玩過');
+  });
+
   it('底下沒有「你當過」那一長行；小字講明是示意、名字與對話是例子、當志工不是真的報名', () => {
     record.done.farm = 2; record.tried.farm = true; record.done.vol = 1; start.refresh();
     const t = $('start').textContent; expect(t).not.toContain('你當過'); expect(t).toContain('人物的名字與對話是例子'); expect(t).toContain('不是真的報名'); expect(t).not.toMatch(/試作|第 \d+ 版/);
@@ -203,7 +238,10 @@ describe('角色清單接到真的頁面', () => {
     const r = await page.open({ storage: memoryStorage(seen) });
     btn('farm').click(); openTask(r.park); page.frame();
     expect($('sheet').hidden).toBe(false);
+    expect(r.park.task.place).toBe('gate'); expect($('sh-stage').textContent).toContain('慢慢說');     // the talk with the mentor at the gate
     leaveAndSwitch(r, 'work');
+    const laolin = r.park.agents.find((a) => a.id === 'laolin');
+    expect(laolin.day.some((e) => e.act === 'welcome' || e.act === 'guide')).toBe(false); expect(laolin.vis).toBe(0);
   });
 
   it('玩到一半離開（時間快轉中），換一個角色：從第一件事乾乾淨淨開始', async () => {

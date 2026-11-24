@@ -4,7 +4,7 @@ import { SOURCE_RE, isSourced, eachSourced, eachString } from './sourced.js';
 
 // The icon names the drawing code knows (Task 9).
 export const ICONS = ['veg', 'vegBad', 'grass', 'bundle', 'box', 'crate', 'tray', 'trayFull', 'tea', 'bucket', 'bucketEmpty',
-  'bowl', 'cell', 'cellSown', 'tagged', 'priced', 'herbbox', 'emptybox', 'coin', 'pot'];
+  'bowl', 'cell', 'cellSown', 'tagged', 'priced', 'herbbox', 'emptybox', 'coin', 'pot', 'phone', 'sensor'];
 
 // Numbers made up for the game. A job that mentions one must say 示意 somewhere.
 export const MADE_UP = /4\.5 小時|500 元|3,000 元|先留 20 元|10 枚盈餘|低於 10|昨天.*4 格|50、.*20、.*22、.*8/;

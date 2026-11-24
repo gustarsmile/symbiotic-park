@@ -3,7 +3,7 @@ import { DATA_FILES, assemble } from '../js/data.js';
 import { readData } from './helpers/data.js';
 import { checkDay } from './helpers/days.js';
 import { ROLE_IDS } from '../js/engine/store.js';
-import { eachString, eachSourced } from './helpers/sourced.js';
+import { eachString, eachSourced, isSourced } from './helpers/sourced.js';
 
 const d = readData();
 const ROLES = ['farm', 'work', 'shop', 'acct', 'learner', 'vol', 'mentor'];
@@ -18,7 +18,7 @@ it('ROLE_IDS 跟 days 的鍵內容與順序一致', () => expect(ROLE_IDS).toEqu
 
 describe.each(['farm', 'work', 'shop', 'acct'])('%s 的一天', (id) => {
   const day = d.days[id];
-  it('件數', () => expect(day.tasks).toHaveLength({ farm: 8, work: 6, shop: 7, acct: 6 }[id]));
+  it('件數', () => expect(day.tasks).toHaveLength({ farm: 9, work: 6, shop: 7, acct: 6 }[id]));
   it('通過共用的檢查', () => checkDay(day, d));
   it('代號與接手的人', () => {
     expect(day.id).toBe(id);
@@ -26,7 +26,7 @@ describe.each(['farm', 'work', 'shop', 'acct'])('%s 的一天', (id) => {
   });
 });
 
-it('農夫育苗的解說補上了示意', () => expect(d.days.farm.tasks[4].why.text).toContain('先留 20 元（示意）'));
+it('農夫育苗的解說補上了示意', () => expect(d.days.farm.tasks[5].why.text).toContain('先留 20 元（示意）'));
 
 it('帳務第 3 件事是兩段：清單，然後長條圖', () => {
   const s = d.days.acct.tasks[2].scene; expect(s.map((p) => p.type)).toEqual(['tick', 'ledger']);
@@ -37,7 +37,7 @@ it('帳務第 3 件事是兩段：清單，然後長條圖', () => {
 
 it('每件事的型別照試作排', () => {
   const types = (id) => d.days[id].tasks.map((t) => (Array.isArray(t.scene) ? t.scene.map((p) => p.type).join('+') : t.scene.type));
-  expect(types('farm')).toEqual(['taps', 'taps', 'sort', 'steps', 'taps', 'handout', 'steps', 'ledger']);
+  expect(types('farm')).toEqual(['steps', 'taps+steps', 'taps+sort', 'sort', 'steps', 'taps', 'handout', 'steps', 'ledger']);
   expect(types('work')).toEqual(['taps', 'sort', 'pick', 'quiz', 'sort', 'tick']);
   expect(types('shop')).toEqual(['taps', 'quiz', 'quiz', 'taps', 'handout', 'sort', 'quiz']);
   expect(types('acct')).toEqual(['sort', 'quiz', 'tick+ledger', 'quiz', 'sort', 'jars']);
@@ -55,7 +55,7 @@ describe.each(['learner', 'vol', 'mentor'])('%s 的一天', (id) => {
   });
 });
 
-it('七個角色一共 46 件事', () => expect(Object.values(d.days).reduce((n, x) => n + x.tasks.length, 0)).toBe(46));
+it('七個角色一共 47 件事', () => expect(Object.values(d.days).reduce((n, x) => n + x.tasks.length, 0)).toBe(47));
 
 // These wordings differ from the prototype on purpose: the project owner decided them on 2026-11-21.
 describe('使用者 2026-11-21 決定的寫法（跟試作不一樣，是刻意的）', () => {
@@ -77,8 +77,8 @@ describe('使用者 2026-11-21 決定的寫法（跟試作不一樣，是刻意�
     expect(d.days.shop.tasks[5].why.source).not.toContain('待確認');
   });
   it('農夫最後一件事：去看這個月的帳，特寫的標題不變', () => {
-    expect(d.days.farm.tasks[7].title).toBe('去看這個月的帳');
-    expect(d.days.farm.tasks[7].head).toBe('今天賣的每 100 元去了哪裡');
+    expect(d.days.farm.tasks[8].title).toBe('去看這個月的帳');
+    expect(d.days.farm.tasks[8].head).toBe('今天賣的每 100 元去了哪裡');
   });
   it('志工備菜：賣相不好的只送加工坊，鍋裡是好看的菜', () => {
     const job = d.days.vol.tasks[1];
@@ -99,7 +99,7 @@ describe('使用者 2026-11-21 決定的寫法（跟試作不一樣，是刻意�
       else if (v && typeof v === 'object') { if (v.type === 'ledger') ledgers.push(v); Object.values(v).forEach(walk); }
     };
     walk(d);
-    expect(ledgers).toHaveLength(3); // farm job 8, bookkeeper job 3, volunteer job 7
+    expect(ledgers).toHaveLength(3); // farm job 9, bookkeeper job 3, volunteer job 7
     ledgers.forEach((l) => { expect(typeof l.source).toBe('string'); expect(l.source).not.toContain('待確認'); });
   });
 });
@@ -151,10 +151,10 @@ it('導師：排五步照試作的順序擺；委員會那一場 flip 1', () => 
 });
 
 it('烘乾要等 2.6 秒、長條圖 1.5 秒；帳務的長條圖不必等', () => {
-  expect(d.days.farm.tasks[3].scene.steps[1].wait.seconds).toBe(2.6);
-  expect(d.days.farm.tasks[3].scene.steps[2].times).toBe(3);
-  expect(d.days.farm.tasks[7].scene.wait).toBe(1.5);
-  expect(d.days.farm.tasks[7].scene.button).toBeUndefined();
+  expect(d.days.farm.tasks[4].scene.steps[1].wait.seconds).toBe(2.6);
+  expect(d.days.farm.tasks[4].scene.steps[2].times).toBe(3);
+  expect(d.days.farm.tasks[8].scene.wait).toBe(1.5);
+  expect(d.days.farm.tasks[8].scene.button).toBeUndefined();
   expect(d.days.acct.tasks[2].scene[1].wait).toBe(0);
 });
 
@@ -170,9 +170,9 @@ describe('共用的檢查抓得到錯', () => {
   it('解說沒有來源', () => expect(broken('farm', (x) => { delete x.tasks[0].why.source; })).toThrow());
   it('來源寫法不對', () => expect(broken('work', (x) => { x.tasks[0].why.source = '有人說的'; })).toThrow());
   it('場景裡標了來源的欄位是一般字串', () => expect(broken('acct', (x) => { x.tasks[0].scene.tips[0] = 'x'; })).toThrow());
-  it('長條圖沒有來源', () => expect(broken('farm', (x) => { delete x.tasks[7].scene.source; })).toThrow());
+  it('長條圖沒有來源', () => expect(broken('farm', (x) => { delete x.tasks[8].scene.source; })).toThrow());
   it('自編的數字沒標示意', () => expect(broken('farm', (x) => {
-    x.tasks[5].why = { text: x.tasks[5].why.text.replace('（示意）', ''), source: '運作設計 6.2（一）' };
+    x.tasks[6].why = { text: x.tasks[6].why.text.replace('（示意）', ''), source: '運作設計 6.2（一）' };
   })).toThrow());
   it('來源是示意數字，文字裡卻沒有示意', () => expect(broken('shop', (x) => { x.tasks[0].why.text = x.tasks[0].why.text.replace('（示意）', ''); })).toThrow());
   it('正解連續三題在同一邊', () => expect(broken('shop', (x) => {
@@ -181,16 +181,55 @@ describe('共用的檢查抓得到錯', () => {
   it('正解全在同一邊', () => expect(broken('work', (x) => { x.tasks[3].scene.q = x.tasks[3].scene.q.slice(0, 1); })).toThrow());
   it('分類題全是同一類', () => expect(broken('work', (x) => { x.tasks[1].scene.items.forEach((it) => { it.cat = 0; }); })).toThrow());
   it('場景裡的人不存在', () => expect(broken('shop', (x) => { x.tasks[1].scene.who = 'nobody'; })).toThrow());
-  it('排一排的人不存在', () => expect(broken('farm', (x) => { x.tasks[6].scene.steps[1].show.people[0].id = 'nobody'; })).toThrow());
-  it('交東西的人不存在', () => expect(broken('farm', (x) => { x.tasks[5].scene.people[0] = 'nobody'; })).toThrow());
+  it('排一排的人不存在', () => expect(broken('farm', (x) => { x.tasks[7].scene.steps[1].show.people[0].id = 'nobody'; })).toThrow());
+  it('交東西的人不存在', () => expect(broken('farm', (x) => { x.tasks[6].scene.people[0] = 'nobody'; })).toThrow());
   it('罐子裝不下全部的錢幣，場景會卡住', () => expect(broken('acct', (x) => { x.tasks[5].scene.jars[2].cap = 0; })).toThrow());
   it('時間沒有一件比一件晚', () => expect(broken('work', (x) => { x.tasks[2].at = x.tasks[1].at; })).toThrow());
   it('截止時間早於開始', () => expect(broken('work', (x) => { x.tasks[2].hold = x.tasks[2].at; })).toThrow());
   it('地點不是招牌之一', () => expect(broken('shop', (x) => { x.tasks[0].place = 'moon'; })).toThrow());
   it('少了必要的欄位', () => expect(broken('acct', (x) => { delete x.tasks[1].head; })).toThrow());
-  it('不認得的圖示', () => expect(broken('farm', (x) => { x.tasks[0].scene.items[0].icon = 'cabbage'; })).toThrow());
+  it('不認得的圖示', () => expect(broken('farm', (x) => { x.tasks[1].scene[0].items[0].icon = 'cabbage'; })).toThrow());
+  it('第二段場景裡不認得的圖示', () => expect(broken('farm', (x) => { x.tasks[2].scene[1].items[0].icon = 'cabbage'; })).toThrow());
+  it('對話裡的一句來源寫法不對', () => expect(broken('farm', (x) => { x.tasks[0].scene.steps[3].show.source = '有人說的'; })).toThrow());
   it('出現時間銀行', () => expect(broken('acct', (x) => { x.did[0] = '時間銀行'; })).toThrow());
   it('沒有標準答案的回覆沒有來源', () => expect(broken('learner', (x) => { x.tasks[1].scene.opts[0].reply = 'x'; })).toThrow());
   it('簽退的 4.5 小時沒標示意', () => expect(broken('vol', (x) => { x.tasks[6].how = x.tasks[6].how.replace('（示意）', ''); })).toThrow());
   it('第二段場景裡的人不存在', () => expect(broken('vol', (x) => { x.tasks[4].scene[1].show.who = 'nobody'; })).toThrow());
+});
+
+// Added by the project owner on 2026-11-24: the farmer's first morning, and the AI and machines in the field.
+describe('農夫的開場橋段、田裡的 AI 與機器', () => {
+  it('農夫的第一件事在大門口跟導師說話，四句回答每一句都有合格的來源', () => {
+    const t = d.days.farm.tasks[0]; expect(t.place).toBe('gate'); expect(t.scene.type).toBe('steps'); expect(t.scene.steps).toHaveLength(4);
+    for (const s of [t.scene, ...t.scene.steps]) { expect(s.show.who).toBe('laolin'); expect(isSourced(s.show)).toBe(true); }
+  });
+  it('開場把甲案的兩邊都說了：來了先接住、人多不怕，也說名額跟著收入一年一年變多', () => {
+    const all = []; eachString(d.days.farm.tasks[0], (s) => all.push(s)); const t = all.join('\n');
+    expect(t).toContain('來了，就先接住'); expect(t).toContain('就能再接更多人'); expect(t).toContain('有薪水的名額跟著園區的收入走'); expect(t).toContain('安全網');
+  });
+  it('採收多了拍照認蟲那一段，香草園多了看澆水那一段', () => {
+    expect(d.days.farm.tasks[1].scene.map((p) => p.type)).toEqual(['taps', 'steps']);
+    expect(d.days.farm.tasks[2].scene.map((p) => p.type)).toEqual(['taps', 'sort']);
+  });
+  it('全部資料沒有監控、監視；農夫的一天沒有機器人', () => {
+    eachString(d, (s) => expect(s).not.toMatch(/監控|監視/)); eachString(d.days.farm, (s) => expect(s).not.toContain('機器人'));
+  });
+
+  it('新的兩段：手機那一段用手機的圖、藏起 how；三區感測器，分錯有提示，做完的那一句講到感測器會壞', () => {
+    const phone = d.days.farm.tasks[1].scene[1], water = d.days.farm.tasks[2].scene[1];
+    expect(phone.show).toEqual({ icon: 'phone' }); expect(phone.hideHow).toBe(true); expect(phone.steps).toHaveLength(1);
+    expect(water.items.map((it) => [it.icon, it.cat])).toEqual([['sensor', 1], ['sensor', 0], ['sensor', 1]]);
+    expect(water.cats.map((c) => c.label)).toEqual(['水閥自己開', '不用澆']);
+    expect(water.tips.every(isSourced)).toBe(true);
+    expect(water.done).toContain('感測器有沒有壞');
+  });
+  it('原有的事加上的那幾句都在，結尾卡第一行是導師在大門口接住你', () => {
+    const t = d.days.farm.tasks;
+    expect(d.days.farm.desc).toBe('新來的農場夥伴：採收、育苗、交菜箱');
+    expect(t[1].note).toContain('怎麼採，手機上有圖，導師也在旁邊。'); expect(t[1].why.text).toContain('重要的判斷再請農改場確認');
+    expect(t[2].head).toBe('割香茅、看澆水'); expect(t[2].why.text).toContain('感測器也會壞');
+    expect(t[4].why.text).toContain('成品還是要有人聞、看、試泡'); expect(t[5].why.text).toContain('再由帶班的人定案');
+    expect(t[8].why.text).toContain('再接住下一個人');
+    expect(d.days.farm.did[0]).toBe('第一天來園區，導師在大門口接住你'); expect(d.days.farm.did).toHaveLength(7);
+  });
 });

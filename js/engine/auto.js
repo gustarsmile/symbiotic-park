@@ -34,7 +34,7 @@ export function pace(dt, auto, mode) {
 
 export function createAuto(park) {
   const st = park.state;
-  let wait = 0, lastRun = null, lastScene = null;
+  let wait = 0, lastRun = null, lastScene = null, seenTi = null, seenScene = null;
 
   const auto = {
     on: false, speed: 1, k: 1, target: null, reading: false, countdown: 0,
@@ -47,7 +47,16 @@ export function createAuto(park) {
     setSpeed(v) { auto.speed = v === 1.5 ? 1.5 : 1; },
 
     step(dt) {
-      if (!auto.on || st.mode !== 'role') return;
+      if (!auto.on) return;
+      // The job or the close-up changed since the last step. Auto mode's own moves leave nothing to undo here, but the
+      // visitor may have pressed the countdown button by hand: then the reading pause belongs to a job that is gone, and
+      // what is left of it is cut to the pause after turning the page (as when auto mode turns it). Also when the day is over.
+      if (st.ti !== seenTi || st.scene !== seenScene) {
+        seenTi = st.ti; seenScene = st.scene;
+        auto.target = null; auto.reading = false; auto.countdown = 0;
+        wait = Math.min(wait, AUTO.afterNext * auto.k);
+      }
+      if (st.mode !== 'role') return;
       if (st.run !== lastRun) {
         lastRun = st.run; lastScene = null;
         auto.target = null; auto.reading = false; auto.countdown = 0;

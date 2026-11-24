@@ -223,6 +223,48 @@ describe('auto', () => {
     }
   });
 
+  // The visitor taps the countdown button (「好，下一件事（n）」) by hand one second into the reading pause: the button
+  // calls park.finishTask() itself, behind auto mode's back.
+  const tapDuringReading = (pk, a, go) => {
+    let n = 0;
+    while (!(a.reading && readSeconds(pk.task.why.text) - a.countdown >= 1) && n++ < 40000) go();
+    expect(a.reading).toBe(true);
+    return pk.finishTask();
+  };
+
+  it('讀解說時自己按下一件事（倒數鈕）：自動模式馬上接著走，下一件事的解說照樣停留整段', () => {
+    for (const role of ['vol', 'work', 'farm']) {
+      const pk = createPark(data), a = createAuto(pk);
+      a.set(true); pk.beginRole(role);
+      const go = () => { pk.tick(DT); a.step(DT); };
+      expect(tapDuringReading(pk, a, go)).toBe('next');
+      go();
+      expect.soft(a.reading, role).toBe(false); expect.soft(a.countdown, role).toBe(0); expect.soft(a.target, role).toBeNull();
+      // no leftover countdown: once the clock has caught up (fast-forward), auto mode sets off for the next job within afterNext
+      let still = 0, n = 0;
+      while (!pk.state.guided && !pk.state.scene && n++ < 40000) { if (!pk.state.ff) still += DT; go(); }
+      expect.soft(still, role).toBeLessThanOrEqual(AUTO.afterNext + 2 * DT + 1e-9);
+      // the next job's explanation is on screen for its whole reading pause before auto mode turns the page
+      const ti = pk.state.ti, why = pk.task.why.text;
+      while (!pk.state.scene?.done && n++ < 40000) go();
+      let shown = 0;
+      while (pk.state.ti === ti && pk.state.mode === 'role' && n++ < 40000) { go(); shown += DT; }
+      expect(pk.state.ti).toBe(ti + 1);
+      expect.soft(shown, role).toBeGreaterThanOrEqual(readSeconds(why) - 1e-9);
+      expect(shown, role).toBeLessThan(readSeconds(why) + AUTO.readMax);
+    }
+  });
+
+  it('最後一件事讀解說時自己按收工：結尾卡的時候自動模式不留著讀秒、倒數或框', () => {
+    const pk = createPark(data), a = createAuto(pk);
+    a.set(true); pk.beginRole('farm', data.days.farm.tasks.length - 1);
+    const go = () => { pk.tick(DT); a.step(DT); };
+    expect(tapDuringReading(pk, a, go)).toBe('end');
+    go();
+    expect(pk.state.mode).toBe('end');
+    expect(a.reading).toBe(false); expect(a.countdown).toBe(0); expect(a.target).toBeNull();
+  });
+
   it('時間常數沒變', () => {
     expect(AUTO).toEqual({ afterBegin: 1.2, afterToggle: 0.8, afterWalk: 0.6, sceneOpen: 1.8, highlight: 0.5,
       afterPress: 0.8, idle: 0.3, afterNext: 1.2, readBase: 3, readPerChar: 0.16, readMin: 6, readMax: 18, lineMin: 3 });
